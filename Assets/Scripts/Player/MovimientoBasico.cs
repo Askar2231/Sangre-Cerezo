@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
-public class ThirdPersonJRPGPlayer : MonoBehaviour
+public class MovimientoBasico : MonoBehaviour
 {
     [Header("Movimiento")]
     public float moveSpeed = 4.5f;
