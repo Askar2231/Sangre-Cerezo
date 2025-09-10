@@ -19,6 +19,8 @@ public class MovimientoBasico : MonoBehaviour
     Vector3 velocity;
     bool onLadder = false;
 
+    private bool movimientoPermitido = true;
+
     void Awake() => cc = GetComponent<CharacterController>();
 
     void Update()
@@ -34,12 +36,19 @@ public class MovimientoBasico : MonoBehaviour
         Vector3 camRight   = cameraTransform.right;
         Vector3 moveDir = (camForward * input.z + camRight * input.x).normalized;
 
-        // --- Si hay input, rotamos hacia la dirección de movimiento ---
-        if (moveDir.sqrMagnitude > 0.001f)
+        //Si el movimiento no esta permitido se forza la direccion a cero
+
+        if (!movimientoPermitido)
         {
-            Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
+            moveDir = Vector3.zero;
         }
+
+        // --- Si hay input, rotamos hacia la dirección de movimiento ---
+            if (moveDir.sqrMagnitude > 0.001f)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
+            }
 
         // --- Gravedad / Escaleras ---
         if (onLadder)
@@ -59,6 +68,11 @@ public class MovimientoBasico : MonoBehaviour
         cc.Move(motion * Time.deltaTime);
     }
 
+    //permitir a otros activar o desactivar movimiento
+    public void PermitirMovimiento(bool puedeMoverse)
+    {
+        movimientoPermitido = puedeMoverse;
+    }
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Ladder")) { onLadder = true; velocity.y = 0f; }

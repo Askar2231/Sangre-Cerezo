@@ -15,6 +15,11 @@ public class BattleManager : MonoBehaviour
     {
     }
 
+     public bool IsBattleActive()
+    {
+        return battleIsActive;
+    }
+
     public void StartBattle()
     {
         savedSnapshot = SavePlayerState(player);
