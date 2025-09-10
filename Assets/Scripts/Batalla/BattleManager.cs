@@ -3,53 +3,77 @@ using System.Collections;
 
 public class BattleManager : MonoBehaviour
 {
+    //cuestiones del player
     public GameObject player;
+    private PlayerSnapshot savedSnapshot;
+    public Transform tpPlayer;
+    //cuestiones de camaras
+    public GameObject OVCamera;
+    public GameObject BattleCamera;
+    //cuestiones enemigo equisde
     public GameObject enemy;
+    public EnemyLoader enemyLoader;
+    private EnemyData currentEnemy; 
+
+    public EnemyData enemyToLoad;
+    //cuestiones varias la vd
     public Canvas battleCanvas;
     public ScreenFader fader;
-    private PlayerSnapshot savedSnapshot;
+   
 
     private bool battleIsActive = false;
 
-    void Start()
-    {
-    }
+    
 
     public void StartBattle()
     {
         savedSnapshot = SavePlayerState(player);
         StartCoroutine(StartBattleRoutine());
-
+        
 
     }
 
     IEnumerator StartBattleRoutine()
     {
-        // Pantalla a negro
+        currentEnemy = enemyToLoad;
+
+        // fade in a la batalla
         yield return StartCoroutine(fader.FadeOut(0.5f));
 
-        // Espera mientras está negro
-        yield return new WaitForSeconds(0.5f);
+        
+        yield return new WaitForSeconds(2f);
+        if (enemyLoader != null && enemyToLoad != null) {
 
-        // Preparar combate (jugador/enemigo/UI)
+        //Inicializar enemigo
+        enemyLoader.LoadEnemy(enemyToLoad);
+        Debug.Log("La batalla ha comenzado contra " + enemyToLoad.enemyName);
+        }
+        else
+        {
+            Debug.LogError("No se asignó EnemyLoader o EnemyData en el inspector.");
+        }
+        BattleCamera.SetActive(true);
+        OVCamera.SetActive(false);
+        TeleportPlayerToBattle();
+        // Activar y desactivar componentes
         battleIsActive = true;
         battleCanvas.gameObject.SetActive(true);
         player.GetComponent<MovimientoBasico>().enabled = false;
 
-        // Volver a mostrar
+        // quitar la pantalla negro
         yield return StartCoroutine(fader.FadeIn(0.5f));
 
         // Iniciar ataques del enemigo
         StartCoroutine(EnemyAttackLoop());
     }
 
-   
 
+   //ciclo de ataques del enemigo.
     IEnumerator EnemyAttackLoop()
     {
         while (battleIsActive)
         {
-            float waitTime = Random.Range(1.5f, 3f);
+            float waitTime = Random.Range(6f, 9f);
             yield return new WaitForSeconds(waitTime);
             EnemyAttack();
         }
@@ -57,7 +81,20 @@ public class BattleManager : MonoBehaviour
 
     public void EnemyAttack()
     {
-        Debug.Log("¡El enemigo ataca!");
+         if (currentEnemy == null || currentEnemy.attacks.Count == 0)
+        {
+            Debug.LogWarning("El enemigo no tiene ataques configurados.");
+            return;
+        }
+
+        
+        int index = Random.Range(0, currentEnemy.attacks.Count);
+        AttackData chosenAttack = currentEnemy.attacks[index];
+
+        //waha
+        Debug.Log(currentEnemy.enemyName + " usa " + chosenAttack.attackName);
+
+   
         EnergyGive();
     }
 
@@ -89,6 +126,8 @@ public class BattleManager : MonoBehaviour
         battleCanvas.gameObject.SetActive(false);
         MovimientoBasico movimiento = player.GetComponent<MovimientoBasico>();
         movimiento.enabled = true;
+        OVCamera.SetActive(true);
+        BattleCamera.SetActive(false);
 
         Debug.Log("Combate finalizado.");
         RestorePlayerState(player, savedSnapshot);
@@ -96,8 +135,8 @@ public class BattleManager : MonoBehaviour
 
     //gestion localizacion player
 
-    
-     public PlayerSnapshot SavePlayerState(GameObject player)
+
+    public PlayerSnapshot SavePlayerState(GameObject player)
     {
         PlayerSnapshot snapshot = new PlayerSnapshot();
 
@@ -143,10 +182,20 @@ public class BattleManager : MonoBehaviour
         if (rb != null)
         {
             rb.isKinematic = snapshot.rbIsKinematic;
-            rb.velocity = snapshot.rbVelocity;
+            rb.linearVelocity = snapshot.rbVelocity;
         }
     }
 
+
+    //tepear al player ala azona de pelea:
+    public void TeleportPlayerToBattle()
+{
+    if (tpPlayer != null && player != null)
+    {
+        player.transform.position = tpPlayer.position;
+        player.transform.rotation = tpPlayer.rotation;
+    }
+}
 }
 
 

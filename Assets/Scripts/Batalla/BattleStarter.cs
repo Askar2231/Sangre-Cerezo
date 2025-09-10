@@ -22,6 +22,7 @@ public class BattleStarter : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             battleManager.StartBattle();
+            this.enabled = false;
         }
     }
 }
