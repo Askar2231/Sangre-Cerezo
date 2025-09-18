@@ -26,19 +26,18 @@ public class PlayerCombat : MonoBehaviour
     }
 
     void Update()
+{
+    if (battleManager != null && battleManager.IsBattleActive())
     {
-        if (battleManager == null) return;
-        if (!battleManager.IsBattleActive()) return; // solo en combate
+        // Input de habilidades
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+            UseAbility(0);
 
-        // Escucha teclas 1,2,3... para lanzar habilidades
-        for (int i = 0; i < abilities.Length; i++)
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-            {
-                UseAbility(i);
-            }
-        }
+        // Input de parry
+        if (Input.GetKeyDown(KeyCode.Space))
+            battleManager.TryParry();
     }
+}
 
     public void GainEnergy(int amount)
     {

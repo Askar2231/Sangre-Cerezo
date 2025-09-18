@@ -4,6 +4,8 @@ using System.Collections;
 public class BattleManager : MonoBehaviour
 {
     // Player
+    private bool parryWindowActive = false;
+    private float parryWindowEndTime;
     public GameObject player;
     private PlayerSnapshot savedSnapshot;
     public Transform tpPlayer;
@@ -85,20 +87,36 @@ public class BattleManager : MonoBehaviour
 
     public void EnemyAttack()
     {
-        if (!IsStaggered && currentEnemy != null && currentEnemy.attacks.Count > 0)
+        if (!IsStaggered)
         {
+            // Elegir ataque
             int index = Random.Range(0, currentEnemy.attacks.Count);
             AttackData chosenAttack = currentEnemy.attacks[index];
 
-            Debug.Log(currentEnemy.enemyName + " usa " + chosenAttack.attackName);
+            Debug.Log(currentEnemy.enemyName + " prepara " + chosenAttack.attackName);
 
-            // Aquí se aplica daño real al jugador
-            playerCombat.TakeDamage(chosenAttack.damage);
+            // Abre ventana de parry (0.3 segundos antes del impacto real)
+            parryWindowActive = true;
+            parryWindowEndTime = Time.time + 0.3f;
 
-            // Dar energía al jugador por cada ataque recibido
-            EnergyGive();
+            // Después de 0.3s se resuelve ataque
+            StartCoroutine(ResolveEnemyAttack(chosenAttack));
         }
     }
+
+    IEnumerator ResolveEnemyAttack(AttackData attack)
+    {
+        yield return new WaitForSeconds(0.3f); // tiempo de reacción
+        if (parryWindowActive)
+        {
+            // si jugador no hizo parry en el tiempo → golpe normal
+            Debug.Log("El ataque de " + attack.attackName + " impacta al jugador.");
+            player.GetComponent<PlayerCombat>().TakeDamage(attack.damage);
+        }
+        parryWindowActive = false;
+    }
+
+
 
 
     public void EnergyGive()
@@ -120,9 +138,21 @@ public class BattleManager : MonoBehaviour
     }
 
     public void TryParry()
+{
+    if (parryWindowActive && Time.time <= parryWindowEndTime)
     {
-        Debug.Log("Jugador intenta parrear.");
+        Debug.Log("¡Parry exitoso!");
+        parryWindowActive = false;
+
+        // ejemplo: aplicar stagger al enemigo
+        currentEnemy.Stagger -= 5;
     }
+    else
+    {
+        Debug.Log("Parry fallido.");
+        // opcional: penalización, ej. recibir daño aumentado
+    }
+}
 
     public void Clash()
     {
