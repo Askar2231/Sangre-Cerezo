@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class EnemyLoader : MonoBehaviour
@@ -8,13 +9,15 @@ public class EnemyLoader : MonoBehaviour
     [Header("Spawn point (EnemyPlaceholderLoader)")]
     public Transform spawnPoint;
 
-   
+
     private GameObject enemyModel;
     private Animator enemyAnimator;
+
+    public BattleManager battleManager;
     private int currentHealth;
     private int currentStagger;
 
-   
+
     public void LoadEnemy(EnemyData data)
     {
         if (data == null)
@@ -44,7 +47,7 @@ public class EnemyLoader : MonoBehaviour
         currentHealth = enemyData.Health;
         currentStagger = enemyData.Stagger;
 
-        
+
         Vector3 pos = spawnPoint != null ? spawnPoint.position : transform.position;
         Quaternion rot = spawnPoint != null ? spawnPoint.rotation : transform.rotation;
 
@@ -71,7 +74,7 @@ public class EnemyLoader : MonoBehaviour
         Debug.Log($"[EnemyLoader] Instanciado '{enemyModel.name}' en {pos}. HP: {currentHealth}, Stagger: {currentStagger}");
     }
 
-    
+
     public int GetCurrentHealth() => currentHealth;
     public int GetCurrentStagger() => currentStagger;
     public string GetEnemyName() => enemyData != null ? enemyData.enemyName : "NoEnemy";
@@ -91,22 +94,67 @@ public class EnemyLoader : MonoBehaviour
         if (currentHealth <= 0) OnDeath();
     }
 
+
+    public void ResetCurrentStagger()
+    {
+        currentStagger = (enemyData != null) ? enemyData.Stagger : 0;
+    }
+
+
+    public void SetCurrentStagger(int value)
+    {
+        currentStagger = value;
+    }
+
+
+    [Header("Stagger Settings")]
+    public float staggerRecoveryTime = 3f; // tiempo que dura stagger (puedes tunearlo)
+
+    private bool isStaggered = false;
+
+
     public void ReduceStagger(int amount)
     {
         currentStagger -= amount;
+        if (currentStagger < 0) currentStagger = 0;
+
         Debug.Log($"[EnemyLoader] {GetEnemyName()} pierde {amount} de stagger. Stagger restante: {currentStagger}");
-        if (currentStagger <= 0)
+
+        if (currentStagger == 0 && !isStaggered)
         {
-            
-            Debug.Log($"[EnemyLoader] {GetEnemyName()} está STAGGERED!");
-           
+            StartCoroutine(HandleStagger());
         }
     }
+
+
+    private IEnumerator HandleStagger()
+    {
+        isStaggered = true;
+        Debug.Log($"[EnemyLoader] {GetEnemyName()} está STAGGERED!");
+
+        // Aquí podrías notificar al BattleManager (ej: que detenga ataques).
+        yield return new WaitForSeconds(staggerRecoveryTime);
+
+        ResetCurrentStagger(); // vuelve a la cantidad base definida en EnemyData
+        isStaggered = false;
+        Debug.Log($"[EnemyLoader] {GetEnemyName()} se recuperó del stagger. Stagger restaurado a {currentStagger}");
+    }
+
+
+
+
 
     void OnDeath()
     {
         Debug.Log($"[EnemyLoader] {GetEnemyName()} ha muerto.");
-        
+        if (battleManager != null)
+        {
+            battleManager.EndBattle();
+        }
+        else
+        {
+            Debug.LogWarning("No se asignó BattleManager en EnemyLoader.");
+        }
     }
 }
 

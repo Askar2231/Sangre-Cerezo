@@ -27,6 +27,7 @@ public class BattleManager : MonoBehaviour
     public ScreenFader fader;
 
     private bool battleIsActive = false;
+    private Coroutine activeAttackRoutine; // referencia al ataque en curso
 
     public bool IsStaggered = false;
     public int StaggerRN = 0;
@@ -44,10 +45,7 @@ public class BattleManager : MonoBehaviour
         currentEnemy = enemyToLoad;
 
         // Reiniciar stagger al iniciar la batalla
-        if (currentEnemy != null)
-        {
-            currentEnemy.Stagger = 10; // valor inicial
-        }
+        enemyLoader.ResetCurrentStagger();
 
         yield return StartCoroutine(fader.FadeOut(0.5f));
         yield return new WaitForSeconds(2f);
@@ -55,6 +53,8 @@ public class BattleManager : MonoBehaviour
         if (enemyLoader != null && enemyToLoad != null)
         {
             enemyLoader.LoadEnemy(enemyToLoad);
+            enemyLoader.battleManager = this; // <--- vincula manager
+
             Debug.Log("La batalla ha comenzado contra " + enemyToLoad.enemyName);
         }
         else
@@ -87,43 +87,73 @@ public class BattleManager : MonoBehaviour
 
     public void EnemyAttack()
     {
-        if (!IsStaggered)
+        if (!IsStaggered && currentEnemy != null && currentEnemy.attacks.Count > 0)
         {
-            // Elegir ataque
             int index = Random.Range(0, currentEnemy.attacks.Count);
             AttackData chosenAttack = currentEnemy.attacks[index];
-
             Debug.Log(currentEnemy.enemyName + " prepara " + chosenAttack.attackName);
 
-            // Abre ventana de parry (0.3 segundos antes del impacto real)
-            parryWindowActive = true;
-            parryWindowEndTime = Time.time + 0.3f;
-
-            // Después de 0.3s se resuelve ataque
-            StartCoroutine(ResolveEnemyAttack(chosenAttack));
+            // guarda la referencia al ataque activo
+            activeAttackRoutine = StartCoroutine(EnemyAttackRoutine(chosenAttack));
         }
     }
 
-    IEnumerator ResolveEnemyAttack(AttackData attack)
+    IEnumerator EnemyAttackRoutine(AttackData attack)
     {
-        yield return new WaitForSeconds(0.3f); // tiempo de reacción
-        if (parryWindowActive)
+        Vector3 originalPos = enemyLoader.transform.position;
+
+        // calcular posición frente al jugador (1.5 unidades de distancia)
+        Vector3 dir = (player.transform.position - enemyLoader.transform.position).normalized;
+        Vector3 targetPos = player.transform.position - dir * 1.5f;
+
+        // 1. Avanzar hacia jugador
+        float t = 0f;
+        while (t < 0.3f)
         {
-            // si jugador no hizo parry en el tiempo → golpe normal
-            Debug.Log("El ataque de " + attack.attackName + " impacta al jugador.");
-            player.GetComponent<PlayerCombat>().TakeDamage(attack.damage);
+            enemyLoader.transform.position = Vector3.Lerp(originalPos, targetPos, t / 0.3f);
+            t += Time.deltaTime;
+            yield return null;
         }
+        enemyLoader.transform.position = targetPos;
+
+        // 2. Esperar un segundo (anticipación)
+        yield return new WaitForSeconds(1f);
+
+        // 3. Activar parry window
+        parryWindowActive = true;
+        parryWindowEndTime = Time.time + attack.windUpTime;
+        Debug.Log("¡Parry Window activa!");
+
+        // 4. Esperar windup
+        yield return new WaitForSeconds(attack.windUpTime);
+
+        if (parryWindowActive)  // <--- aquí deberías chequear además que NO se haya cancelado
+        {
+            Debug.Log("El ataque de " + attack.attackName + " impacta al jugador.");
+            playerCombat.TakeDamage(attack.damage);
+            playerCombat.GainEnergy(2);
+        }
+
+
+        // 5. Resetear estado y volver al lugar original
         parryWindowActive = false;
+        t = 0f;
+        while (t < 0.3f)
+        {
+            enemyLoader.transform.position = Vector3.Lerp(targetPos, originalPos, t / 0.3f);
+            t += Time.deltaTime;
+            yield return null;
+        }
+        enemyLoader.transform.position = originalPos;
+
+        activeAttackRoutine = null; // ataque completado
     }
-
-
-
 
     public void EnergyGive()
     {
         if (playerCombat != null)
         {
-            playerCombat.GainEnergy(5); // ⚡ puedes ajustar el valor
+            playerCombat.GainEnergy(2);
         }
         else
         {
@@ -131,28 +161,50 @@ public class BattleManager : MonoBehaviour
         }
     }
 
-
     public void TryDodge()
     {
         Debug.Log("Jugador intenta esquivar.");
     }
 
     public void TryParry()
-{
-    if (parryWindowActive && Time.time <= parryWindowEndTime)
     {
-        Debug.Log("¡Parry exitoso!");
-        parryWindowActive = false;
+        if (parryWindowActive && Time.time <= parryWindowEndTime)
+        {
+            Debug.Log("¡Parry exitoso!");
+            parryWindowActive = false;
+            parryWindowEndTime = 0f;   // fuerza cierre total de la ventana
 
-        // ejemplo: aplicar stagger al enemigo
-        currentEnemy.Stagger -= 5;
+            if (enemyLoader != null)
+            {
+                enemyLoader.ReduceStagger(5);
+            }
+            else if (currentEnemy != null)
+            {
+                // fallback (no recomendado): modifica asset solo en caso extremo
+                currentEnemy.Stagger = Mathf.Max(0, currentEnemy.Stagger - 5);
+                Debug.LogWarning("EnemyLoader no asignado, modificando EnemyData.Stagger (no recomendado).");
+            }
+
+            // cancelar ataque en curso
+            if (activeAttackRoutine != null)
+            {
+                StopCoroutine(activeAttackRoutine);
+                activeAttackRoutine = null;
+            }
+
+            // volver a posición inicial
+            if (enemyLoader != null && enemyLoader.spawnPoint != null)
+            {
+                enemyLoader.transform.position = enemyLoader.spawnPoint.position;
+            }
+        }
+        else
+        {
+            Debug.Log("Parry fallido.");
+        }
     }
-    else
-    {
-        Debug.Log("Parry fallido.");
-        // opcional: penalización, ej. recibir daño aumentado
-    }
-}
+
+
 
     public void Clash()
     {
@@ -164,7 +216,6 @@ public class BattleManager : MonoBehaviour
         battleIsActive = false;
         StopAllCoroutines();
         playerCombat.enabled = false;
-
 
         battleCanvas.gameObject.SetActive(false);
         MovimientoBasico movimiento = player.GetComponent<MovimientoBasico>();
@@ -236,25 +287,34 @@ public class BattleManager : MonoBehaviour
 
     private void CheckStagger()
     {
+        if (enemyLoader != null)
+        {
+            StaggerRN = enemyLoader.GetCurrentStagger();
+            IsStaggered = (StaggerRN <= 0);
+            return;
+        }
+
         if (currentEnemy == null) return;
 
         StaggerRN = currentEnemy.Stagger;
         IsStaggered = (StaggerRN <= 0);
     }
 
+
+
     public EnemyData GetCurrentEnemy()
     {
         return currentEnemy;
     }
-    
-    // al final de la clase BattleManager
+
     public bool IsBattleActive()
     {
         return battleIsActive;
     }
-
-
 }
+
+
+
 
 
 

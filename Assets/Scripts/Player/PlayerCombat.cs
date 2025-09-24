@@ -32,10 +32,13 @@ public class PlayerCombat : MonoBehaviour
         // Input de habilidades
         if (Input.GetKeyDown(KeyCode.Alpha1))
             UseAbility(0);
+            
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+            UseAbility(1);
 
         // Input de parry
-        if (Input.GetKeyDown(KeyCode.Space))
-            battleManager.TryParry();
+            if (Input.GetKeyDown(KeyCode.Space))
+                battleManager.TryParry();
     }
 }
 

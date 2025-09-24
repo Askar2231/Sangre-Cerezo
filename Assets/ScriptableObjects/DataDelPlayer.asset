@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerName: Heroe
   maxHealth: 100
-  currentHealth: 0
-  maxEnergy: 50
-  currentEnergy: 0
+  currentHealth: 95
+  maxEnergy: 10
+  currentEnergy: 5
   attackPower: 10
   defense: 5
   dodgeChance: 0.1

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyName: 
   description: Samuari Basico, Primer enemigo
-  prefab: {fileID: 1392240665035977009, guid: 650a3212a8cf1f54d845e313c8e147ef, type: 3}
+  prefab: {fileID: 2188988923539296609, guid: 3c19a92b0679f4b48ab7cd231b35b7ad, type: 3}
   Health: 30
   defense: 5
   Stagger: 10

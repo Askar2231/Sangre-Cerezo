@@ -22,7 +22,7 @@ public class BattleStarter : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             battleManager.StartBattle();
-            this.enabled = false;
+            Destroy(gameObject); // Destruye este objeto para que la batalla no se inicie de nuevo
         }
     }
 }
