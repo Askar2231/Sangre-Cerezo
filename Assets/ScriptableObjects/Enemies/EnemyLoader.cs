@@ -9,20 +9,25 @@ public class EnemyLoader : MonoBehaviour
     [Header("Spawn point (EnemyPlaceholderLoader)")]
     public Transform spawnPoint;
 
-
     private GameObject enemyModel;
     private Animator enemyAnimator;
 
+    [Header("Referencias")]
     public BattleManager battleManager;
+
     private int currentHealth;
     private int currentStagger;
 
+    [Header("Stagger Settings")]
+    public float staggerRecoveryTime = 3f; // tiempo que dura el stagger
+    private bool isStaggered = false;
 
+    #region INIT
     public void LoadEnemy(EnemyData data)
     {
         if (data == null)
         {
-            Debug.LogError("[EnemyLoader] LoadEnemy called with null EnemyData!");
+            Debug.LogError("[EnemyLoader] LoadEnemy llamado con null EnemyData!");
             return;
         }
 
@@ -36,22 +41,20 @@ public class EnemyLoader : MonoBehaviour
 
         enemyData = data;
 
-        // Validaciones de datos
         if (enemyData.prefab == null)
         {
             Debug.LogError($"[EnemyLoader] EnemyData '{enemyData.enemyName}' no tiene prefab asignado!");
             return;
         }
 
-        //cargar las stats
+        // cargar stats iniciales
         currentHealth = enemyData.Health;
         currentStagger = enemyData.Stagger;
-
 
         Vector3 pos = spawnPoint != null ? spawnPoint.position : transform.position;
         Quaternion rot = spawnPoint != null ? spawnPoint.rotation : transform.rotation;
 
-        // Instancia el prefab como hijo del spawnPoint para mantener orden en la jerarquía
+        // Instanciar modelo
         enemyModel = Instantiate(enemyData.prefab, pos, rot, spawnPoint);
 
         if (enemyModel == null)
@@ -63,22 +66,29 @@ public class EnemyLoader : MonoBehaviour
         enemyModel.SetActive(true);
         enemyModel.name = $"{enemyData.enemyName}_Instance";
 
-        // Buscar el animator
+        // Buscar animator
         enemyAnimator = enemyModel.GetComponent<Animator>();
         if (enemyAnimator == null)
             enemyAnimator = enemyModel.GetComponentInChildren<Animator>();
 
         if (enemyAnimator == null)
-            Debug.LogWarning($"[EnemyLoader] No se encontró Animator en prefab '{enemyData.prefab.name}'. Asegúrate que tenga un Animator o maneja animaciones manualmente.");
+            Debug.LogWarning($"[EnemyLoader] No se encontró Animator en prefab '{enemyData.prefab.name}'.");
 
         Debug.Log($"[EnemyLoader] Instanciado '{enemyModel.name}' en {pos}. HP: {currentHealth}, Stagger: {currentStagger}");
+
+        // Vincular BattleManager si no está
+        if (battleManager == null)
+            battleManager = FindFirstObjectByType<BattleManager>();
     }
+    #endregion
 
-
+    #region GETTERS
     public int GetCurrentHealth() => currentHealth;
     public int GetCurrentStagger() => currentStagger;
     public string GetEnemyName() => enemyData != null ? enemyData.enemyName : "NoEnemy";
+    #endregion
 
+    #region COMBATE
     public AttackData GetRandomAttack()
     {
         if (enemyData == null || enemyData.attacks == null || enemyData.attacks.Count == 0)
@@ -90,63 +100,57 @@ public class EnemyLoader : MonoBehaviour
     public void TakeDamage(int amount)
     {
         currentHealth -= amount;
-        Debug.Log($"[EnemyLoader] {GetEnemyName()} recibe {amount} de daño. HP restante: {currentHealth}");
+        if (currentHealth < 0) currentHealth = 0;
+
+        BattleUIManager.LogMessage($"[EnemyLoader] {GetEnemyName()} recibe {amount} de daño. HP restante: {currentHealth}");
+
         if (currentHealth <= 0) OnDeath();
     }
 
+    public void ReduceStagger(int amount)
+    {
+        if (isStaggered) return; // no seguir reduciendo si ya está en stagger
+
+        currentStagger -= amount;
+        if (currentStagger < 0) currentStagger = 0;
+
+        BattleUIManager.LogMessage($"[EnemyLoader] {GetEnemyName()} pierde {amount} de stagger. Stagger restante: {currentStagger}");
+
+        if (currentStagger == 0)
+            StartCoroutine(HandleStagger());
+    }
+    #endregion
+
+    #region STAGGER
+    private IEnumerator HandleStagger()
+    {
+        isStaggered = true;
+        BattleUIManager.LogMessage($"[EnemyLoader] {GetEnemyName()} está STAGGERED!");
+
+        // Aquí podrías notificar al BattleManager si quieres detener ataques, etc.
+        yield return new WaitForSeconds(staggerRecoveryTime);
+
+        ResetCurrentStagger();
+        isStaggered = false;
+        BattleUIManager.LogMessage($"[EnemyLoader] {GetEnemyName()} se recuperó del stagger. Stagger restaurado a {currentStagger}");
+    }
 
     public void ResetCurrentStagger()
     {
         currentStagger = (enemyData != null) ? enemyData.Stagger : 0;
     }
 
-
     public void SetCurrentStagger(int value)
     {
-        currentStagger = value;
+        currentStagger = Mathf.Max(0, value);
     }
+    #endregion
 
-
-    [Header("Stagger Settings")]
-    public float staggerRecoveryTime = 3f; // tiempo que dura stagger (puedes tunearlo)
-
-    private bool isStaggered = false;
-
-
-    public void ReduceStagger(int amount)
+    #region MUERTE
+    private void OnDeath()
     {
-        currentStagger -= amount;
-        if (currentStagger < 0) currentStagger = 0;
+        BattleUIManager.LogMessage($"[EnemyLoader] {GetEnemyName()} ha muerto.");
 
-        Debug.Log($"[EnemyLoader] {GetEnemyName()} pierde {amount} de stagger. Stagger restante: {currentStagger}");
-
-        if (currentStagger == 0 && !isStaggered)
-        {
-            StartCoroutine(HandleStagger());
-        }
-    }
-
-
-    private IEnumerator HandleStagger()
-    {
-        isStaggered = true;
-        Debug.Log($"[EnemyLoader] {GetEnemyName()} está STAGGERED!");
-
-        // Aquí podrías notificar al BattleManager (ej: que detenga ataques).
-        yield return new WaitForSeconds(staggerRecoveryTime);
-
-        ResetCurrentStagger(); // vuelve a la cantidad base definida en EnemyData
-        isStaggered = false;
-        Debug.Log($"[EnemyLoader] {GetEnemyName()} se recuperó del stagger. Stagger restaurado a {currentStagger}");
-    }
-
-
-
-
-
-    void OnDeath()
-    {
-        Debug.Log($"[EnemyLoader] {GetEnemyName()} ha muerto.");
         if (battleManager != null)
         {
             battleManager.EndBattle();
@@ -156,5 +160,7 @@ public class EnemyLoader : MonoBehaviour
             Debug.LogWarning("No se asignó BattleManager en EnemyLoader.");
         }
     }
+    #endregion
 }
+
 

@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: 
   description: Samuari Basico, Primer enemigo
   prefab: {fileID: 2188988923539296609, guid: 3c19a92b0679f4b48ab7cd231b35b7ad, type: 3}
-  Health: 30
+  Health: 150
   defense: 5
   Stagger: 10
   attacks:
