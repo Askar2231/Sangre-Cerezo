@@ -20,3 +20,4 @@ MonoBehaviour:
   Stagger: 10
   attacks:
   - {fileID: 11400000, guid: 02316c12430f1674092d11a282058d51, type: 2}
+  - {fileID: 11400000, guid: 6ae7f5b9ac09f9044922de6d09b23e21, type: 2}
