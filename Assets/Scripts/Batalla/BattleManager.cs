@@ -26,19 +26,17 @@ public class BattleManager : MonoBehaviour
     // UI
     public Canvas battleCanvas;
     public ScreenFader fader;
-    public BattleUIManager uiManager; // 👈 referencia al UI Manager
+    public BattleUIManager uiManager;
 
     private bool battleIsActive = false;
-    private Coroutine activeAttackRoutine; // referencia al ataque en curso
+    private Coroutine activeAttackRoutine;
 
     public bool IsStaggered = false;
     public int StaggerRN = 0;
 
-    // --- dentro de BattleManager ---
     [Header("Parry Indicator")]
-    public GameObject parryIndicatorPrefab; // prefab de la estrella
-
-    private GameObject activeParryIndicator; // instancia activa
+    public GameObject parryIndicatorPrefab;
+    private GameObject activeParryIndicator;
 
 
 
@@ -56,7 +54,6 @@ public class BattleManager : MonoBehaviour
     {
         currentEnemy = enemyToLoad;
 
-        // Reiniciar stagger al iniciar la batalla
         enemyLoader.ResetCurrentStagger();
 
         yield return StartCoroutine(fader.FadeOut(0.5f));
@@ -78,80 +75,92 @@ public class BattleManager : MonoBehaviour
 
         battleIsActive = true;
         battleCanvas.gameObject.SetActive(true);
-        if (uiManager != null) uiManager.gameObject.SetActive(true); // 👈 activar UI
+        if (uiManager != null) uiManager.gameObject.SetActive(true);
 
         player.GetComponent<MovimientoBasico>().enabled = false;
 
         yield return StartCoroutine(fader.FadeIn(0.5f));
 
-        StartCoroutine(EnemyAttackLoop());
+        StartCoroutine(TurnBasedLoop());
     }
 
-    IEnumerator EnemyAttackLoop()
+    IEnumerator TurnBasedLoop()
     {
         while (battleIsActive)
         {
-            float waitTime = Random.Range(6f, 9f);
-            yield return new WaitForSeconds(waitTime);
-            EnemyAttack();
+            // TURNO DEL JUGADOR
+            yield return PlayerTurn();
+            if (!battleIsActive) break;
+
+            // TURNO DEL ENEMIGO
+            yield return EnemyTurn();
+            if (!battleIsActive) break;
         }
     }
 
-    public void EnemyAttack()
+    IEnumerator PlayerTurn()
     {
+        Debug.Log("Turno del jugador");
+
+        // Daño directo temporal
+        if (enemyLoader != null && currentEnemy != null)
+        {
+            int damage = 5;
+            enemyLoader.TakeDamage(damage);
+            BattleUIManager.LogMessage("Atacas al enemigo por " + damage);
+        }
+
+        yield return new WaitForSeconds(1f);
+    }
+
+    IEnumerator EnemyTurn()
+    {
+        Debug.Log("Turno del enemigo");
+
         if (!IsStaggered && currentEnemy != null && currentEnemy.attacks.Count > 0)
         {
             int index = Random.Range(0, currentEnemy.attacks.Count);
             AttackData chosenAttack = currentEnemy.attacks[index];
-
             BattleUIManager.LogMessage(currentEnemy.enemyName + " usa " + chosenAttack.attackName);
 
-            activeAttackRoutine = StartCoroutine(EnemyAttackRoutine(chosenAttack));
+            yield return StartCoroutine(EnemyAttackRoutine(chosenAttack));
+        }
+        else
+        {
+            Debug.Log("El enemigo está staggered o sin ataques");
+            yield return new WaitForSeconds(1f);
         }
     }
 
     IEnumerator EnemyAttackRoutine(AttackData attack)
     {
-        
-
-        // 2. Esperar un segundo (anticipación)
+        // Anticipación
         yield return new WaitForSeconds(1f);
 
-        // 3. Activar parry window
+        // Activar ventana de parry
         parryWindowActive = true;
         parryWindowEndTime = Time.time + attack.windUpTime;
         ShowParryIndicator(attack.windUpTime);
 
-
-        // 4. Esperar windup
+        // Esperar duración del windUp
         yield return new WaitForSeconds(attack.windUpTime);
 
+        // Si no se hizo parry, daña al jugador
         if (parryWindowActive)
         {
-            // si aún no parrearon → golpea al jugador
             playerCombat.TakeDamage(attack.damage);
             playerCombat.GainEnergy(2);
         }
 
-        // 5. Resetear estado y volver al lugar original
+        // Cerrar ventana de parry
         parryWindowActive = false;
-        
-        
-        
+
         if (activeParryIndicator != null)
         {
             Destroy(activeParryIndicator);
         }
 
-        activeAttackRoutine = null; // ataque completado
-    }
-
-    public void EnergyGive()
-    {
-        if (playerCombat != null)
-        {
-            playerCombat.GainEnergy(2);
-        }
+        activeAttackRoutine = null;
     }
 
     public void TryParry()
@@ -159,11 +168,10 @@ public class BattleManager : MonoBehaviour
         if (parryWindowActive && Time.time <= parryWindowEndTime)
         {
             BattleUIManager.LogMessage("¡Parry exitoso!");
-                if (activeParryIndicator != null)
-    {
-        Destroy(activeParryIndicator);
-    }
-    
+
+            if (activeParryIndicator != null)
+                Destroy(activeParryIndicator);
+
             parryWindowActive = false;
             EnergyGive();
 
@@ -194,6 +202,14 @@ public class BattleManager : MonoBehaviour
         }
     }
 
+    public void EnergyGive()
+    {
+        if (playerCombat != null)
+        {
+            playerCombat.GainEnergy(2);
+        }
+    }
+
     public void EndBattle()
     {
         battleIsActive = false;
@@ -201,7 +217,7 @@ public class BattleManager : MonoBehaviour
         playerCombat.enabled = false;
 
         battleCanvas.gameObject.SetActive(false);
-        if (uiManager != null) uiManager.gameObject.SetActive(false); // 👈 desactivar UI
+        if (uiManager != null) uiManager.gameObject.SetActive(false);
 
         MovimientoBasico movimiento = player.GetComponent<MovimientoBasico>();
         movimiento.enabled = true;
@@ -288,68 +304,48 @@ public class BattleManager : MonoBehaviour
         return currentEnemy;
     }
 
-
-
-
-
     public bool IsBattleActive()
     {
         return battleIsActive;
     }
 
     private void ShowParryIndicator(float duration)
-{
-    if (parryIndicatorPrefab == null || enemyLoader == null) return;
-
-    if (activeParryIndicator != null)
     {
-        Destroy(activeParryIndicator);
+        if (parryIndicatorPrefab == null || enemyLoader == null) return;
+
+        if (activeParryIndicator != null)
+        {
+            Destroy(activeParryIndicator);
+        }
+
+        Vector3 spawnPos = enemyLoader.transform.position + Vector3.up * 2f;
+        Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
+
+        activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyLoader.transform);
+
+        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyLoader.transform, Vector3.up * 2f);
+
+        StartCoroutine(AnimateParryIndicator(activeParryIndicator.transform, duration));
     }
 
-    // posición arriba del enemigo
-    Vector3 spawnPos = enemyLoader.transform.position + Vector3.up * 2f;
-
-    // rotación del prefab + 180 grados en Y
-    Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
-
-    activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyLoader.transform);
-
-    // que siga al enemigo sin mover el loader
-    activeParryIndicator.AddComponent<FollowTarget>().Init(enemyLoader.transform, Vector3.up * 2f);
-
-    StartCoroutine(AnimateParryIndicator(activeParryIndicator.transform, duration));
-}
-
-
-private IEnumerator AnimateParryIndicator(Transform indicator, float duration)
-{
-    float half = duration / 2f;
-    float timer = 0f;
-
-    while (timer < duration)
+    private IEnumerator AnimateParryIndicator(Transform indicator, float duration)
     {
-        timer += Time.deltaTime;
+        float half = duration / 2f;
+        float timer = 0f;
 
-        float scale = (timer < half)
-            ? Mathf.Lerp(0.2f, 1.2f, timer / half)   // crece
-            : Mathf.Lerp(1.2f, 0.0f, (timer - half) / half); // se encoge
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
 
-        indicator.localScale = Vector3.one * scale;
+            float scale = (timer < half)
+                ? Mathf.Lerp(0.2f, 1.2f, timer / half)
+                : Mathf.Lerp(1.2f, 0.0f, (timer - half) / half);
 
-        yield return null;
+            indicator.localScale = Vector3.one * scale;
+
+            yield return null;
+        }
+
+        Destroy(indicator.gameObject);
     }
-
-    Destroy(indicator.gameObject);
 }
-
-}
-
-
-
-
-
-
-
-
-
-
