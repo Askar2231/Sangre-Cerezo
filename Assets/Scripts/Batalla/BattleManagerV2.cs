@@ -50,7 +50,7 @@ public class BattleManagerV2 : MonoBehaviour
     
     private void Start()
     {
-        InitializeBattle();
+       // InitializeBattle();
     }
     
     /// <summary>
