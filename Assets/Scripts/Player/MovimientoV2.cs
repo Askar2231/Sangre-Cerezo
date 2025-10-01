@@ -146,7 +146,7 @@ public class MovimientoV2 : MonoBehaviour
         );
         
         // Set animation speed parameter for 1D blend tree
-        animator.SetFloat(SpeedHash, currentAnimationSpeed);
+        //animator.SetFloat(SpeedHash, currentAnimationSpeed);
     }
     
     /// <summary>

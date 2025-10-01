@@ -25,8 +25,6 @@ public class PlayerBattleController : MonoBehaviour
     public event Action OnActionComplete;
     public event Action<ActionType> OnActionStarted;
     
-    private BattleAction currentAction;
-    
     private void Awake()
     {
         if (playerCharacter == null)
@@ -37,59 +35,140 @@ public class PlayerBattleController : MonoBehaviour
     
     public void Initialize(AnimationSequencer animSequencer, QTEManager qte)
     {
-        this.animationSequencer = animSequencer;
-        this.qteManager = qte;
+        animationSequencer = animSequencer; // Puede ser null temporalmente
+        qteManager = qte;
         
-        animationSequencer.Initialize(playerCharacter.Animator, qteManager);
+        if (animationSequencer == null)
+        {
+            Debug.LogWarning("AnimationSequencer is null - using temporary delay system");
+        }
+        
+        Debug.Log("PlayerBattleController initialized");
     }
     
     /// <summary>
-    /// Execute a light attack
+    /// Execute light attack against target
     /// </summary>
     public void ExecuteLightAttack(BattleCharacter target)
     {
-        if (lightAttackData == null)
+        if (!CanPerformAction(ActionType.LightAttack))
         {
-            Debug.LogError("Light attack data not assigned!");
+            Debug.LogWarning("Cannot perform light attack - insufficient stamina or conditions not met");
             return;
         }
         
-        currentAction = new AttackAction(
-            playerCharacter,
-            target,
-            lightAttackData,
-            animationSequencer,
-            qteManager
-        );
-        
-        currentAction.OnActionComplete += HandleActionComplete;
         OnActionStarted?.Invoke(ActionType.LightAttack);
-        currentAction.Execute();
+        
+        // Si no hay AnimationSequencer, ejecutar inmediatamente
+        if (animationSequencer == null)
+        {
+            Debug.Log("No AnimationSequencer - executing attack immediately");
+            ExecuteAttackDamage(target);
+            OnActionComplete?.Invoke();
+            return;
+        }
+        
+        // Con AnimationSequencer (código original cuando esté disponible)
+        // animationSequencer.PlayAttackSequence(
+        //     lightAttackData,
+        //     () => ExecuteAttackDamage(target),
+        //     () => OnActionComplete?.Invoke()
+        // );
+        
+        // Por ahora, ejecutar inmediatamente también
+        ExecuteAttackDamage(target);
+        OnActionComplete?.Invoke();
     }
-    
+
     /// <summary>
-    /// Execute a skill
+    /// Execute skill against target
     /// </summary>
     public void ExecuteSkill(int skillIndex, BattleCharacter target)
     {
-        if (skillIndex < 0 || skillIndex >= availableSkills.Length)
+        if (skillIndex < 0 || skillIndex >= availableSkills.Length || availableSkills[skillIndex] == null)
         {
             Debug.LogError($"Invalid skill index: {skillIndex}");
             return;
         }
         
-        SkillData skillData = availableSkills[skillIndex];
+        if (!CanPerformAction(ActionType.Skill))
+        {
+            Debug.LogWarning("Cannot perform skill - insufficient stamina or conditions not met");
+            return;
+        }
         
-        currentAction = new SkillAction(
-            playerCharacter,
-            target,
-            skillData,
-            playerCharacter.Animator
-        );
+        var skill = availableSkills[skillIndex];
         
-        currentAction.OnActionComplete += HandleActionComplete;
         OnActionStarted?.Invoke(ActionType.Skill);
-        currentAction.Execute();
+        
+        // Si no hay AnimationSequencer, ejecutar inmediatamente
+        if (animationSequencer == null)
+        {
+            Debug.Log($"No AnimationSequencer - executing skill {skill.skillName} immediately");
+            ExecuteSkillDamage(skill, target);
+            OnActionComplete?.Invoke();
+            return;
+        }
+        
+        // Con AnimationSequencer (código original cuando esté disponible)
+        // animationSequencer.PlaySkillSequence(
+        //     skill,
+        //     () => ExecuteSkillDamage(skill, target),
+        //     () => OnActionComplete?.Invoke()
+        // );
+        
+        // Por ahora, ejecutar inmediatamente también
+        ExecuteSkillDamage(skill, target);
+        OnActionComplete?.Invoke();
+    }
+
+    /// <summary>
+    /// Execute the actual attack damage
+    /// </summary>
+    private void ExecuteAttackDamage(BattleCharacter target)
+    {
+        if (lightAttackData == null)
+        {
+            Debug.LogError("Light attack data is null!");
+            return;
+        }
+        
+        // Consume stamina
+        playerCharacter.StaminaManager.ConsumeStamina(lightAttackData.staminaCost);
+        
+        // Calculate and apply damage
+        float damage = lightAttackData.baseDamage;
+        target.TakeDamage(damage);
+        
+        Debug.Log($"Player deals {damage} damage to {target.name}");
+    }
+
+    /// <summary>
+    /// Execute the actual skill damage
+    /// </summary>
+    private void ExecuteSkillDamage(SkillData skill, BattleCharacter target)
+    {
+        if (skill == null)
+        {
+            Debug.LogError("Skill data is null!");
+            return;
+        }
+        
+        // Consume stamina
+        playerCharacter.StaminaManager.ConsumeStamina(skill.staminaCost);
+        
+        // Calculate and apply damage - usar 'damageAmount' en lugar de 'baseDamage'
+        float damage = skill.damageAmount; // <- CAMBIO AQUÍ
+        target.TakeDamage(damage);
+        
+        // Si la habilidad cura al jugador, aplicar curación
+        if (skill.healsPlayer && skill.healAmount > 0f)
+        {
+            playerCharacter.Heal(skill.healAmount);
+            Debug.Log($"Player heals for {skill.healAmount} HP");
+        }
+        
+        Debug.Log($"Player uses {skill.skillName} dealing {damage} damage to {target.name}");
     }
     
     /// <summary>
@@ -107,7 +186,7 @@ public class PlayerBattleController : MonoBehaviour
                 // Check if any skill is available
                 foreach (var skill in availableSkills)
                 {
-                    if (playerCharacter.StaminaManager.HasEnoughStamina(skill.staminaCost))
+                    if (skill != null && playerCharacter.StaminaManager.HasEnoughStamina(skill.staminaCost))
                         return true;
                 }
                 return false;
@@ -116,7 +195,7 @@ public class PlayerBattleController : MonoBehaviour
                 return false;
         }
     }
-    
+
     /// <summary>
     /// Get stamina cost for an action
     /// </summary>
@@ -126,26 +205,32 @@ public class PlayerBattleController : MonoBehaviour
         {
             case ActionType.LightAttack:
                 return lightAttackData != null ? lightAttackData.staminaCost : 0f;
-            
+
             case ActionType.Skill:
-                if (skillIndex >= 0 && skillIndex < availableSkills.Length)
-                    return availableSkills[skillIndex].staminaCost;
+                if (skillIndex >= 0 && skillIndex < availableSkills.Length && availableSkills[skillIndex] != null)
+                    return availableSkills[skillIndex].staminaCost; // Ya está correcto
                 return 0f;
-            
+
             default:
                 return 0f;
         }
     }
+
     
-    private void HandleActionComplete()
+    /// <summary>
+    /// Get available skills for UI generation
+    /// </summary>
+    public SkillData[] GetAvailableSkills()
     {
-        if (currentAction != null)
-        {
-            currentAction.OnActionComplete -= HandleActionComplete;
-            currentAction = null;
-        }
-        
-        OnActionComplete?.Invoke();
+        return availableSkills ?? new SkillData[0];
+    }
+
+    /// <summary>
+    /// Check if player has light attack available
+    /// </summary>
+    public bool HasLightAttack()
+    {
+        return lightAttackData != null;
     }
     
     /// <summary>
@@ -154,7 +239,6 @@ public class PlayerBattleController : MonoBehaviour
     public void ResetForBattle()
     {
         playerCharacter.ResetForBattle();
-        currentAction = null;
     }
 }
 

@@ -13,18 +13,22 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     public float maxPitch = 60f;
 
     [Header("Auto Follow")]
-    public float autoFollowDelay = 2f;   // segundos sin input
-    public float autoFollowSpeed = 5f;   // suavidad (AJUSTADO, más lento y natural)
+    public float autoFollowDelay = 2f;   
+    public float autoFollowSpeed = 5f;   
 
     [Header("Modo Combate")]
-    public float combatDistance = -6f;
-    public float combatHeight = 3f;
+    public Vector3 combatOffset = new Vector3(1.5f, 2.5f, -3f); // Detrás del hombro derecho
+    public float combatPitch = 10f; // Ángulo hacia abajo para ver al enemigo
     public float transitionSpeed = 3f;
+    
+    [Header("Battle System")]
+    public BattleManagerV2 battleManager;
+    public Transform enemy; // Referencia al enemigo para enfocar
 
     float yaw;
     float pitch;
     float lastInputTime;
-    bool inCombat = false;
+    private bool inCombatMode = false;
 
     void Start()
     {
@@ -33,14 +37,35 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         Vector3 angles = transform.eulerAngles;
         yaw = angles.y;
         pitch = angles.x;
-        Cursor.lockState = CursorLockMode.Locked;
+        
+        UpdateCursorState();
     }
 
     void LateUpdate()
     {
         if (!target) return;
 
-        // Entrada mouse
+        bool inCombat = IsInCombat();
+        
+        // Activar modo combate si cambia el estado
+        if (inCombat != inCombatMode)
+        {
+            inCombatMode = inCombat;
+            if (inCombatMode)
+            {
+                EnterCombatMode();
+            }
+        }
+        
+        UpdateCursorState();
+
+        if (inCombatMode)
+        {
+            HandleCombatCamera();
+            return;
+        }
+
+        // Entrada mouse (solo fuera de combate)
         float mouseX = Input.GetAxis("Mouse X");
         float mouseY = Input.GetAxis("Mouse Y");
 
@@ -54,26 +79,81 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         }
         else if (Time.time - lastInputTime > autoFollowDelay)
         {
-            // Auto-follow más suave → interpola hacia el forward del jugador
             float targetYaw = target.eulerAngles.y;
             yaw = Mathf.LerpAngle(yaw, targetYaw, autoFollowSpeed * Time.deltaTime);
         }
 
-        // --- Offset según modo ---
-        Vector3 desiredOffset = offset;
-        if (inCombat)
-            desiredOffset = new Vector3(offset.x, combatHeight, combatDistance);
-
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 finalOffset = Vector3.Lerp(offset, desiredOffset, transitionSpeed * Time.deltaTime);
-
-        transform.position = target.position + rotation * finalOffset;
+        transform.position = target.position + rotation * offset;
         transform.rotation = rotation;
     }
 
-    public void SetCombatMode(bool active)
+    /// <summary>
+    /// Configura la cámara para modo combate detrás del hombro
+    /// </summary>
+    private void EnterCombatMode()
     {
-        inCombat = active;
+        Debug.Log("Camera entering combat mode - behind shoulder position");
+        
+        // Si hay enemigo, enfocar hacia él
+        if (enemy != null)
+        {
+            Vector3 directionToEnemy = (enemy.position - target.position).normalized;
+            yaw = Mathf.Atan2(directionToEnemy.x, directionToEnemy.z) * Mathf.Rad2Deg;
+        }
+        
+        // Ángulo fijo para ver al enemigo
+        pitch = combatPitch;
+    }
+
+    /// <summary>
+    /// Maneja la cámara durante el combate - posición fija detrás del hombro
+    /// </summary>
+    private void HandleCombatCamera()
+    {
+        // Posición fija detrás del hombro derecho
+        Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 targetPosition = target.position + rotation * combatOffset;
+        
+        // Suave transición a la posición de combate
+        transform.position = Vector3.Lerp(transform.position, targetPosition, transitionSpeed * Time.deltaTime);
+        transform.rotation = Quaternion.Lerp(transform.rotation, rotation, transitionSpeed * Time.deltaTime);
+    }
+
+    /// <summary>
+    /// Verifica si estamos en combate
+    /// </summary>
+    private bool IsInCombat()
+    {
+        if (battleManager == null) return false;
+        return battleManager.IsBattleActive;
+    }
+
+    /// <summary>
+    /// Actualiza el estado del cursor según el modo de combate
+    /// </summary>
+    private void UpdateCursorState()
+    {
+        bool inCombat = IsInCombat();
+        
+        if (inCombat)
+        {
+            if (Cursor.lockState != CursorLockMode.None)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                Debug.Log("Combat mode ON - Cursor unlocked");
+            }
+        }
+        else
+        {
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                Debug.Log("Combat mode OFF - Cursor locked");
+            }
+        }
     }
 }
 

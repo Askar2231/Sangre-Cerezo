@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections;
 
 /// <summary>
 /// Main battle manager that coordinates all battle systems
@@ -12,7 +13,7 @@ public class BattleManagerV2 : MonoBehaviour
     [SerializeField] private EnemyBattleController enemyController;
     
     [Header("Systems")]
-    [SerializeField] private AnimationSequencer playerAnimationSequencer;
+    // [SerializeField] private AnimationSequencer playerAnimationSequencer; // COMENTADO - Usando delays temporales
     [SerializeField] private QTEManager qteManager;
     [SerializeField] private ParrySystem parrySystem;
     
@@ -21,6 +22,14 @@ public class BattleManagerV2 : MonoBehaviour
     
     [Header("UI (Optional)")]
     [SerializeField] private GameObject actionSelectionUI;
+    
+    [Header("Camera")]
+    [SerializeField] private ThirdPersonJRPGCamera battleCamera;
+    
+    [Header("Temporary Animation Settings")]
+    [SerializeField] private float playerAttackDelay = 1.0f; // Tiempo simulado de animación de ataque
+    [SerializeField] private float playerSkillDelay = 1.2f;  // Tiempo simulado de animación de skill
+    [SerializeField] private float enemyAttackDelay = 1.0f;  // Tiempo simulado de animación enemiga
     
     // Core Systems
     private TurnManager turnManager;
@@ -60,8 +69,8 @@ public class BattleManagerV2 : MonoBehaviour
             enemyController.Character
         );
         
-        // Initialize controllers
-        playerController.Initialize(playerAnimationSequencer, qteManager);
+        // Initialize controllers - pasar null para animationSequencer temporalmente
+        playerController.Initialize(null, qteManager);
         enemyController.Initialize(parrySystem);
         
         // Reset characters
@@ -163,7 +172,9 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
-        playerController.ExecuteLightAttack(enemyController.Character);
+        
+        // Ejecutar ataque con delay temporal (simulando animación)
+        StartCoroutine(ExecutePlayerAttackWithDelay());
     }
     
     /// <summary>
@@ -179,6 +190,40 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingSkill);
+        
+        // Ejecutar skill con delay temporal (simulando animación)
+        StartCoroutine(ExecutePlayerSkillWithDelay(skillIndex));
+    }
+    
+    /// <summary>
+    /// Simula la animación de ataque del jugador con delay
+    /// </summary>
+    private IEnumerator ExecutePlayerAttackWithDelay()
+    {
+        Debug.Log("Player attack animation started (simulated)");
+        
+        // Simular tiempo de animación
+        yield return new WaitForSeconds(playerAttackDelay);
+        
+        Debug.Log("Player attack animation complete, executing damage");
+        
+        // Ejecutar el daño real
+        playerController.ExecuteLightAttack(enemyController.Character);
+    }
+    
+    /// <summary>
+    /// Simula la animación de skill del jugador con delay
+    /// </summary>
+    private IEnumerator ExecutePlayerSkillWithDelay(int skillIndex)
+    {
+        Debug.Log($"Player skill {skillIndex} animation started (simulated)");
+        
+        // Simular tiempo de animación
+        yield return new WaitForSeconds(playerSkillDelay);
+        
+        Debug.Log($"Player skill {skillIndex} animation complete, executing damage");
+        
+        // Ejecutar el daño real
         playerController.ExecuteSkill(skillIndex, enemyController.Character);
     }
     
@@ -223,6 +268,27 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("Enemy thinking complete");
         turnManager.ChangeEnemyTurnState(EnemyTurnState.Attacking);
+        
+        // Ejecutar ataque enemigo con delay temporal
+        StartCoroutine(ExecuteEnemyAttackWithDelay());
+    }
+    
+    /// <summary>
+    /// Simula la animación de ataque del enemigo con delay
+    /// </summary>
+    private IEnumerator ExecuteEnemyAttackWithDelay()
+    {
+        Debug.Log("Enemy attack animation started (simulated)");
+        
+        // Mostrar parry icon antes del ataque
+        ShowParryIcon();
+        
+        // Simular tiempo de animación
+        yield return new WaitForSeconds(enemyAttackDelay);
+        
+        Debug.Log("Enemy attack animation complete, executing damage");
+        
+        // Ejecutar el daño real
         enemyController.ExecuteAttack(playerController.Character);
     }
     
@@ -236,7 +302,18 @@ public class BattleManagerV2 : MonoBehaviour
             return; // Death handler will end battle
         }
         
-        // End enemy turn
+        // Delay antes de terminar el turno enemigo
+        StartCoroutine(EndEnemyTurnWithDelay(0.8f)); // 800ms delay
+    }
+    
+    /// <summary>
+    /// Termina el turno enemigo después de un delay
+    /// </summary>
+    private IEnumerator EndEnemyTurnWithDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        Debug.Log("Enemy turn ending after delay");
         turnManager.EndEnemyTurn();
     }
     
@@ -338,10 +415,6 @@ public class BattleManagerV2 : MonoBehaviour
             playerMovement.SetMovementEnabled(false);
             Debug.Log("Player movement disabled for battle");
         }
-        else
-        {
-            Debug.LogWarning("PlayerMovement reference not assigned! Movement will not be disabled.");
-        }
     }
     
     /// <summary>
@@ -358,6 +431,110 @@ public class BattleManagerV2 : MonoBehaviour
     
     #endregion
     
+    #region Parry System
+
+    [Header("Parry System")]
+    [SerializeField] private GameObject parryIndicatorPrefab; // Prefab 3D del indicador
+    private GameObject activeParryIndicator;
+
+    /// <summary>
+    /// Muestra el icono de parry cuando el enemigo va a atacar
+    /// </summary>
+    private void ShowParryIcon()
+    {
+        if (parryIndicatorPrefab == null || enemyController == null) 
+        {
+            Debug.LogWarning("ParryIndicatorPrefab or EnemyController not assigned!");
+            return;
+        }
+
+        // Destruir indicador anterior si existe
+        if (activeParryIndicator != null)
+        {
+            Destroy(activeParryIndicator);
+        }
+
+        // Crear indicador 3D encima del enemigo (pequeño inicialmente)
+        Vector3 spawnPos = enemyController.transform.position + Vector3.up * 2f;
+        Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
+
+        activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyController.transform);
+        
+        // Comenzar pequeño
+        activeParryIndicator.transform.localScale = Vector3.one * 0.2f;
+
+        // Agregar componente para seguir al enemigo
+        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * 2f);
+
+        // Esperar hasta que se abra la ventana de parry para animar
+        StartCoroutine(WaitForParryWindowAndAnimate());
+        
+        Debug.Log("3D Parry indicator shown for enemy attack");
+    }
+
+    /// <summary>
+    /// Espera hasta que se abra la ventana de parry y entonces anima la estrella
+    /// </summary>
+    private IEnumerator WaitForParryWindowAndAnimate()
+    {
+        // Usar los mismos valores que el EnemyBattleController
+        float parryWindowStartTime = 1.5f;  // Mismo valor que EnemyBattleController
+        float damageApplicationTime = 1.7f; // Mismo valor que EnemyBattleController
+        
+        // Esperar hasta que se abra la ventana de parry
+        yield return new WaitForSeconds(parryWindowStartTime);
+        
+        if (activeParryIndicator != null)
+        {
+            // Calcular la duración real de la ventana de parry
+            float parryWindowDuration = damageApplicationTime - parryWindowStartTime; // = 0.2f
+            StartCoroutine(AnimateParryIndicatorDuringWindow(activeParryIndicator.transform, parryWindowDuration));
+        }
+    }
+
+    /// <summary>
+    /// Anima el parry indicator SOLO durante la ventana de parry
+    /// </summary>
+    private IEnumerator AnimateParryIndicatorDuringWindow(Transform indicator, float duration)
+    {
+        if (indicator == null) yield break;
+        
+        float half = duration / 2f;
+        float timer = 0f;
+
+        Debug.Log($"Parry window opened! Animating indicator for {duration} seconds");
+
+        while (timer < duration && indicator != null)
+        {
+            timer += Time.deltaTime;
+
+            float scale = (timer < half)
+                ? Mathf.Lerp(0.2f, 1.2f, timer / half)          // Primera mitad: crecer
+                : Mathf.Lerp(1.2f, 0.2f, (timer - half) / half); // Segunda mitad: encoger (no a 0)
+
+            indicator.localScale = Vector3.one * scale;
+
+            yield return null;
+        }
+
+        // Mantener pequeño hasta que se destruya
+        if (indicator != null)
+        {
+            indicator.localScale = Vector3.one * 0.2f;
+        }
+        
+        // Esperar un poco más antes de destruir (para que el jugador vea el resultado)
+        yield return new WaitForSeconds(0.5f);
+        
+        // Autodestruir
+        if (indicator != null)
+        {
+            Destroy(indicator.gameObject);
+        }
+    }
+
+    #endregion
+    
     #region Validation
     
     private void ValidateReferences()
@@ -368,8 +545,9 @@ public class BattleManagerV2 : MonoBehaviour
         if (enemyController == null)
             Debug.LogError("EnemyBattleController not assigned!");
         
-        if (playerAnimationSequencer == null)
-            Debug.LogError("AnimationSequencer not assigned!");
+        // AnimationSequencer comentado temporalmente
+        // if (playerAnimationSequencer == null)
+        //     Debug.LogError("AnimationSequencer not assigned!");
         
         if (qteManager == null)
             Debug.LogError("QTEManager not assigned!");
@@ -379,6 +557,9 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (playerMovement == null)
             Debug.LogWarning("PlayerMovement (MovimientoV2) not assigned! Movement will not be disabled during battle.");
+        
+        if (parryIndicatorPrefab == null)
+            Debug.LogWarning("ParryIndicatorPrefab not assigned! Parry indicators will not show.");
     }
     
     #endregion

@@ -11,12 +11,12 @@ public class EnemyBattleController : MonoBehaviour
     [SerializeField] private BattleCharacter enemyCharacter;
     
     [Header("Attack Settings")]
-    [SerializeField] private string attackAnimationName = "EnemyAttack";
+    // [SerializeField] private string attackAnimationName = "EnemyAttack"; // COMENTADO - Sin animaciones por ahora
     [SerializeField] private float attackDamage = 15f;
     [SerializeField] private float attackDuration = 2f;
     
     [Header("Attack Timing")]
-    [SerializeField] private float parryWindowStartTime = 1.5f; // When to open parry window (normalized or absolute)
+    [SerializeField] private float parryWindowStartTime = 1.5f; // When to open parry window
     [SerializeField] private float damageApplicationTime = 1.7f; // When damage is dealt
     
     [Header("AI Settings")]
@@ -45,8 +45,15 @@ public class EnemyBattleController : MonoBehaviour
         this.parrySystem = parry;
         
         // Subscribe to parry events
-        parrySystem.OnParrySuccess += HandleParrySuccess;
-        parrySystem.OnParryFail += HandleParryFail;
+        if (parrySystem != null)
+        {
+            parrySystem.OnParrySuccess += HandleParrySuccess;
+            parrySystem.OnParryFail += HandleParryFail;
+        }
+        else
+        {
+            Debug.LogWarning("ParrySystem is null in EnemyBattleController");
+        }
     }
     
     /// <summary>
@@ -66,28 +73,35 @@ public class EnemyBattleController : MonoBehaviour
     }
     
     /// <summary>
-    /// Execute enemy attack
+    /// Execute enemy attack (sin animaciones, solo delays temporales)
     /// </summary>
     public void ExecuteAttack(BattleCharacter playerTarget)
     {
         target = playerTarget;
         attackWasParried = false;
         
-        StartCoroutine(AttackRoutine());
+        StartCoroutine(AttackRoutineTemporary());
     }
     
-    private IEnumerator AttackRoutine()
+    /// <summary>
+    /// Rutina de ataque temporal sin animaciones
+    /// </summary>
+    private IEnumerator AttackRoutineTemporary()
     {
-        Debug.Log("Enemy attacks!");
+        Debug.Log("Enemy attack started (simulated animation)");
         
-        // Play attack animation
-        enemyCharacter.Animator.Play(attackAnimationName);
+        // COMENTADO - Sin animaciones por ahora
+        // enemyCharacter.Animator.Play(attackAnimationName);
         
         // Wait until parry window timing
         yield return new WaitForSeconds(parryWindowStartTime);
         
         // Open parry window
-        parrySystem.OpenParryWindow();
+        if (parrySystem != null)
+        {
+            parrySystem.OpenParryWindow();
+            Debug.Log("Parry window opened!");
+        }
         
         // Wait until damage application time
         float remainingTime = damageApplicationTime - parryWindowStartTime;
@@ -99,8 +113,62 @@ public class EnemyBattleController : MonoBehaviour
         // Apply damage if not parried
         if (!attackWasParried)
         {
-            target.TakeDamage(attackDamage);
-            Debug.Log($"Enemy dealt {attackDamage} damage!");
+            if (target != null)
+            {
+                target.TakeDamage(attackDamage);
+                Debug.Log($"Enemy dealt {attackDamage} damage!");
+            }
+        }
+        else
+        {
+            Debug.Log("Attack was parried! No damage dealt.");
+        }
+        
+        // Wait for attack duration to complete
+        float finalWait = attackDuration - damageApplicationTime;
+        if (finalWait > 0)
+        {
+            yield return new WaitForSeconds(finalWait);
+        }
+        
+        Debug.Log("Enemy attack complete (simulated animation finished)");
+        OnAttackComplete?.Invoke();
+    }
+    
+    /// <summary>
+    /// Rutina de ataque original con animaciones (para cuando estén disponibles)
+    /// </summary>
+    private IEnumerator AttackRoutineWithAnimations()
+    {
+        Debug.Log("Enemy attacks!");
+        
+        // Play attack animation
+        // enemyCharacter.Animator.Play(attackAnimationName);
+        
+        // Wait until parry window timing
+        yield return new WaitForSeconds(parryWindowStartTime);
+        
+        // Open parry window
+        if (parrySystem != null)
+        {
+            parrySystem.OpenParryWindow();
+        }
+        
+        // Wait until damage application time
+        float remainingTime = damageApplicationTime - parryWindowStartTime;
+        if (remainingTime > 0)
+        {
+            yield return new WaitForSeconds(remainingTime);
+        }
+        
+        // Apply damage if not parried
+        if (!attackWasParried)
+        {
+            if (target != null)
+            {
+                target.TakeDamage(attackDamage);
+                Debug.Log($"Enemy dealt {attackDamage} damage!");
+            }
         }
         else
         {
@@ -122,7 +190,7 @@ public class EnemyBattleController : MonoBehaviour
         attackWasParried = true;
         
         // Grant stamina to player
-        if (target != null)
+        if (target != null && parrySystem != null)
         {
             target.StaminaManager.AddStamina(parrySystem.StaminaReward);
             Debug.Log($"Parry successful! Gained {parrySystem.StaminaReward} stamina!");
@@ -132,6 +200,7 @@ public class EnemyBattleController : MonoBehaviour
     private void HandleParryFail()
     {
         attackWasParried = false;
+        Debug.Log("Parry failed!");
     }
     
     /// <summary>
@@ -139,7 +208,10 @@ public class EnemyBattleController : MonoBehaviour
     /// </summary>
     public void ResetForBattle()
     {
-        enemyCharacter.ResetForBattle();
+        if (enemyCharacter != null)
+        {
+            enemyCharacter.ResetForBattle();
+        }
         attackWasParried = false;
         StopAllCoroutines();
     }
