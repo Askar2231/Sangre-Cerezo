@@ -121,12 +121,18 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     }
 
     /// <summary>
-    /// Verifica si estamos en combate
+    /// Verifica si estamos en combate activo (no solo inicializado)
     /// </summary>
     private bool IsInCombat()
     {
         if (battleManager == null) return false;
-        return battleManager.IsBattleActive;
+        
+        // Solo activar modo combate durante estados activos de batalla
+        BattleState currentState = battleManager.CurrentState;
+        
+        return currentState == BattleState.PlayerTurn || 
+               currentState == BattleState.EnemyTurn;
+        // NO incluir BattleState.BattleStart ni BattleState.BattleEnd
     }
 
     /// <summary>

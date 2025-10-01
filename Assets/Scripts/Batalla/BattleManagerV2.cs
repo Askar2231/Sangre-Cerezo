@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 using System;
 using System.Collections;
 
@@ -43,14 +45,30 @@ public class BattleManagerV2 : MonoBehaviour
     public BattleState CurrentState => turnManager?.CurrentBattleState ?? BattleState.BattleStart;
     public bool IsBattleActive => battleResult == BattleResult.None;
     
+    [Header("Parry System")]
+    [SerializeField] private GameObject parryIndicatorPrefab; // Prefab 3D del indicador
+    private GameObject activeParryIndicator;
+
+    [Header("UI Health Display")]
+    [SerializeField] private TextMeshProUGUI playerHealthText;
+    [SerializeField] private TextMeshProUGUI enemyHealthText;
+    [SerializeField] private TextMeshProUGUI playerStaminaText; // AGREGAR ESTA LÍNEA
+    
     private void Awake()
     {
         ValidateReferences();
     }
     
+    // MODIFICAR el método Start() para que NO inicie automáticamente:
     private void Start()
     {
-       // InitializeBattle();
+        // Solo suscribirse a eventos del ParrySystem, NO inicializar batalla
+        if (parrySystem != null)
+        {
+            parrySystem.OnParryWindowActive += HandleParryWindowStateChanged;
+            parrySystem.OnParrySuccess += HandleParrySuccess;
+            parrySystem.OnParryFail += HandleParryFail;
+        }
     }
     
     /// <summary>
@@ -85,9 +103,28 @@ public class BattleManagerV2 : MonoBehaviour
         turnManager.OnPlayerTurnStateChanged += HandlePlayerTurnStateChanged;
         turnManager.OnEnemyTurnStateChanged += HandleEnemyTurnStateChanged;
         
+        // Actualizar UI inicial de vida
+        UpdateHealthUI();
+        
         // Start battle
         battleResult = BattleResult.None;
         turnManager.ChangeBattleState(BattleState.PlayerTurn);
+    }
+
+    // AGREGAR método público para iniciar batalla desde afuera:
+    /// <summary>
+    /// Inicia la batalla desde un trigger externo
+    /// </summary>
+    public void StartBattle()
+    {
+        if (battleResult != BattleResult.None)
+        {
+            Debug.LogWarning("Battle already in progress or finished!");
+            return;
+        }
+        
+        Debug.Log("Starting battle from external trigger...");
+        InitializeBattle();
     }
     
     /// <summary>
@@ -242,6 +279,9 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("Player action complete");
         
+        // Actualizar UI de vida después de la acción del jugador
+        UpdateHealthUI();
+        
         // Check if enemy is dead
         if (!enemyController.Character.IsAlive)
         {
@@ -280,9 +320,6 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("Enemy attack animation started (simulated)");
         
-        // Mostrar parry icon antes del ataque
-        ShowParryIcon();
-        
         // Simular tiempo de animación
         yield return new WaitForSeconds(enemyAttackDelay);
         
@@ -295,6 +332,9 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandleEnemyAttackComplete()
     {
         Debug.Log("Enemy attack complete");
+        
+        // Actualizar UI de vida después del ataque enemigo
+        UpdateHealthUI();
         
         // Check if player is dead
         if (!playerController.Character.IsAlive)
@@ -328,11 +368,32 @@ public class BattleManagerV2 : MonoBehaviour
         turnManager.ChangeBattleState(BattleState.BattleEnd);
     }
     
+    // MODIFICAR el método HandleEnemyDeath():
     private void HandleEnemyDeath()
     {
         Debug.Log("Enemy has been defeated!");
         battleResult = BattleResult.PlayerVictory;
+        
+        // Destruir el GameObject del enemigo después de un breve delay
+        StartCoroutine(DestroyEnemyAfterDelay(1.5f));
+        
         turnManager.ChangeBattleState(BattleState.BattleEnd);
+    }
+    
+    // AGREGAR nueva corrutina para destruir enemigo:
+    /// <summary>
+    /// Destruye el enemigo después de un delay para permitir efectos visuales
+    /// </summary>
+    private IEnumerator DestroyEnemyAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        if (enemyController != null && enemyController.gameObject != null)
+        {
+            Debug.Log("Destroying defeated enemy...");
+            Destroy(enemyController.gameObject);
+            enemyController = null; // Limpiar referencia
+        }
     }
     
     private void EndBattle()
@@ -367,6 +428,55 @@ public class BattleManagerV2 : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Updates player health display
+    /// </summary>
+    private void UpdatePlayerHealthUI()
+    {
+        if (playerHealthText != null && playerController?.Character != null)
+        {
+            float currentHP = playerController.Character.CurrentHealth;
+            float maxHP = playerController.Character.MaxHealth;
+            playerHealthText.text = $"Player HP: {currentHP:F0}/{maxHP:F0}";
+        }
+    }
+
+    /// <summary>
+    /// Updates enemy health display
+    /// </summary>
+    private void UpdateEnemyHealthUI()
+    {
+        if (enemyHealthText != null && enemyController?.Character != null)
+        {
+            float currentHP = enemyController.Character.CurrentHealth;
+            float maxHP = enemyController.Character.MaxHealth;
+            enemyHealthText.text = $"Enemy HP: {currentHP:F0}/{maxHP:F0}";
+        }
+    }
+
+    /// <summary>
+    /// Updates player stamina display
+    /// </summary>
+    private void UpdatePlayerStaminaUI()
+    {
+        if (playerStaminaText != null && playerController?.Character != null)
+        {
+            float currentStamina = playerController.Character.StaminaManager.CurrentStamina;
+            float maxStamina = playerController.Character.StaminaManager.MaxStamina;
+            playerStaminaText.text = $"Player Stamina: {currentStamina:F0}/{maxStamina:F0}";
+        }
+    }
+
+    /// <summary>
+    /// Updates both health UI elements
+    /// </summary>
+    private void UpdateHealthUI()
+    {
+        UpdatePlayerHealthUI();
+        UpdateEnemyHealthUI();
+        UpdatePlayerStaminaUI(); // AGREGAR ESTA LÍNEA
+    }
+    
     #endregion
     
     #region Cleanup
@@ -394,14 +504,20 @@ public class BattleManagerV2 : MonoBehaviour
             turnManager.OnPlayerTurnStateChanged -= HandlePlayerTurnStateChanged;
             turnManager.OnEnemyTurnStateChanged -= HandleEnemyTurnStateChanged;
         }
+        
+        // Desuscribirse de eventos del ParrySystem
+        if (parrySystem != null)
+        {
+            parrySystem.OnParryWindowActive -= HandleParryWindowStateChanged;
+            parrySystem.OnParrySuccess -= HandleParrySuccess;
+            parrySystem.OnParryFail -= HandleParryFail;
+        }
     }
     
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
     }
-    
-    #endregion
     
     #region Movement Control
     
@@ -433,103 +549,70 @@ public class BattleManagerV2 : MonoBehaviour
     
     #region Parry System
 
-    [Header("Parry System")]
-    [SerializeField] private GameObject parryIndicatorPrefab; // Prefab 3D del indicador
-    private GameObject activeParryIndicator;
+    /// <summary>
+    /// Handle the parry window state changes from ParrySystem
+    /// </summary>
+    private void HandleParryWindowStateChanged(bool isActive)
+    {
+        if (isActive)
+        {
+            CreateParryIndicator();
+        }
+        else
+        {
+            DestroyParryIndicator();
+        }
+    }
 
     /// <summary>
-    /// Muestra el icono de parry cuando el enemigo va a atacar
+    /// Handle parry success event
     /// </summary>
-    private void ShowParryIcon()
+    private void HandleParrySuccess()
     {
-        if (parryIndicatorPrefab == null || enemyController == null) 
-        {
-            Debug.LogWarning("ParryIndicatorPrefab or EnemyController not assigned!");
-            return;
-        }
+        DestroyParryIndicator();
+        Debug.Log("Parry successful!");
+    }
 
-        // Destruir indicador anterior si existe
+    /// <summary>
+    /// Handle parry fail event
+    /// </summary>
+    private void HandleParryFail()
+    {
+        Debug.Log("Parry failed!");
+    }
+
+    /// <summary>
+    /// Creates the parry indicator when window opens
+    /// </summary>
+    private void CreateParryIndicator()
+    {
+        if (parryIndicatorPrefab == null || enemyController == null) return;
+        
         if (activeParryIndicator != null)
         {
             Destroy(activeParryIndicator);
         }
-
-        // Crear indicador 3D encima del enemigo (pequeño inicialmente)
+        
+        Debug.Log("Parry window opened! Creating indicator");
+        
         Vector3 spawnPos = enemyController.transform.position + Vector3.up * 2f;
         Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
 
         activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyController.transform);
-        
-        // Comenzar pequeño
-        activeParryIndicator.transform.localScale = Vector3.one * 0.2f;
-
-        // Agregar componente para seguir al enemigo
+        activeParryIndicator.transform.localScale = Vector3.one * 1.0f;
         activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * 2f);
-
-        // Esperar hasta que se abra la ventana de parry para animar
-        StartCoroutine(WaitForParryWindowAndAnimate());
-        
-        Debug.Log("3D Parry indicator shown for enemy attack");
     }
 
     /// <summary>
-    /// Espera hasta que se abra la ventana de parry y entonces anima la estrella
+    /// Destroys the parry indicator
     /// </summary>
-    private IEnumerator WaitForParryWindowAndAnimate()
+    private void DestroyParryIndicator()
     {
-        // Usar los mismos valores que el EnemyBattleController
-        float parryWindowStartTime = 1.5f;  // Mismo valor que EnemyBattleController
-        float damageApplicationTime = 1.7f; // Mismo valor que EnemyBattleController
-        
-        // Esperar hasta que se abra la ventana de parry
-        yield return new WaitForSeconds(parryWindowStartTime);
-        
         if (activeParryIndicator != null)
         {
-            // Calcular la duración real de la ventana de parry
-            float parryWindowDuration = damageApplicationTime - parryWindowStartTime; // = 0.2f
-            StartCoroutine(AnimateParryIndicatorDuringWindow(activeParryIndicator.transform, parryWindowDuration));
-        }
-    }
-
-    /// <summary>
-    /// Anima el parry indicator SOLO durante la ventana de parry
-    /// </summary>
-    private IEnumerator AnimateParryIndicatorDuringWindow(Transform indicator, float duration)
-    {
-        if (indicator == null) yield break;
-        
-        float half = duration / 2f;
-        float timer = 0f;
-
-        Debug.Log($"Parry window opened! Animating indicator for {duration} seconds");
-
-        while (timer < duration && indicator != null)
-        {
-            timer += Time.deltaTime;
-
-            float scale = (timer < half)
-                ? Mathf.Lerp(0.2f, 1.2f, timer / half)          // Primera mitad: crecer
-                : Mathf.Lerp(1.2f, 0.2f, (timer - half) / half); // Segunda mitad: encoger (no a 0)
-
-            indicator.localScale = Vector3.one * scale;
-
-            yield return null;
-        }
-
-        // Mantener pequeño hasta que se destruya
-        if (indicator != null)
-        {
-            indicator.localScale = Vector3.one * 0.2f;
-        }
-        
-        // Esperar un poco más antes de destruir (para que el jugador vea el resultado)
-        yield return new WaitForSeconds(0.5f);
-        
-        // Autodestruir
-        if (indicator != null)
-        {
-            Destroy(indicator.gameObject);
+            Destroy(activeParryIndicator);
+            activeParryIndicator = null;
+            Debug.Log("Parry indicator destroyed");
         }
     }
 
@@ -584,6 +667,8 @@ public class BattleManagerV2 : MonoBehaviour
             playerController.Character.StaminaManager.MaxStamina
         );
     }
+    
+    #endregion
     
     #endregion
 }
