@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6983085168646864035
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1936111032898018367}
+  - component: {fileID: 6800799017762451047}
+  - component: {fileID: 4840395661707042379}
+  m_Layer: 0
+  m_Name: TutorialManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1936111032898018367
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6983085168646864035}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 12.285099, y: 0, z: 24.7388}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6800799017762451047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6983085168646864035}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44b0077be859ab346a3ebd693c45c6b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  simpleDialogPresenter: {fileID: 0}
+  cardPopoverPresenter: {fileID: 0}
+  tutorialsEnabled: 1
+  debugMode: 0
+  OnTutorialStarted:
+    m_PersistentCalls:
+      m_Calls: []
+  OnTutorialCompleted:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &4840395661707042379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6983085168646864035}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 910dd83e81d1726409e5ee39a44fd820, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  keyboardMove: {fileID: 405151817, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  keyboardRun: {fileID: -2120801154, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  keyboardInteract: {fileID: -1350719223, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  keyboardQTE: {fileID: -1476951808, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  keyboardParry: {fileID: -1476951808, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  keyboardConfirm: {fileID: 176924562, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  keyboardCancel: {fileID: -412285690, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxMove: {fileID: 1870678892, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxRun: {fileID: 1053706052, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxInteract: {fileID: -725581648, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxQTE: {fileID: -725581648, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxParry: {fileID: -725581648, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxConfirm: {fileID: -725581648, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  xboxCancel: {fileID: -666183619, guid: 069a00c4a21d8654bbe27600f3ba7103, type: 3}
+  psMove: {fileID: 0}
+  psRun: {fileID: 0}
+  psInteract: {fileID: 0}
+  psQTE: {fileID: 0}
+  psParry: {fileID: 0}
+  psConfirm: {fileID: 0}
+  psCancel: {fileID: 0}
+  debugMode: 0
