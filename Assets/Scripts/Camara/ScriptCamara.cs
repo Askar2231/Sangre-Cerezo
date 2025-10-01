@@ -4,7 +4,7 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
 {
     [Header("Objetivo")]
     public Transform target; // Player
-    public Vector3 offset = new Vector3(0, 2f, -4f);
+    public Vector3 offset = new Vector3(0, 1.2f, -2.5f); // REDUCIR de (0, 2f, -4f)
 
     [Header("Rotación Orbital")]
     public float mouseXSens = 180f;
@@ -16,10 +16,16 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     public float autoFollowDelay = 2f;   
     public float autoFollowSpeed = 5f;   
 
-    [Header("Modo Combate")]
-    public Vector3 combatOffset = new Vector3(1.5f, 2.5f, -3f); // Detrás del hombro derecho
-    public float combatPitch = 10f; // Ángulo hacia abajo para ver al enemigo
-    public float transitionSpeed = 3f;
+    [Header("Camera Settings")]
+    [SerializeField] private float followDistance = 2f;    // REDUCIR de 3f
+    [SerializeField] private float followHeight = 1f;      // REDUCIR de 1.5f  
+    [SerializeField] private float combatDistance = 1.5f;  // REDUCIR de 2f
+    [SerializeField] private float combatHeight = 0.8f;    // REDUCIR de 1f
+
+    [Header("Combat Mode")]
+    [SerializeField] private Vector3 combatOffset = new Vector3(0.3f, 0.8f, -1.5f); // AJUSTAR para jugador pequeño
+    public float combatPitch = 15f; // Aumentar ligeramente de 10f para ver mejor
+    public float transitionSpeed = 3f; // Mantener
     
     [Header("Battle System")]
     public BattleManagerV2 battleManager;

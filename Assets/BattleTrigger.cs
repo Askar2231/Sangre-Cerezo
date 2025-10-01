@@ -7,7 +7,7 @@ public class BattleTrigger : MonoBehaviour
 {
     [Header("Battle Settings")]
     [SerializeField] private BattleManagerV2 battleManager;
-    [SerializeField] private float playerRetreatDistance = 5f; // Distancia de retroceso del jugador
+    [SerializeField] private float playerRetreatDistance = 2f; // REDUCIR de 5f a 2f para jugador pequeño
     
     [Header("References")]
     [SerializeField] private Transform playerTransform; // El transform del jugador
@@ -87,31 +87,25 @@ public class BattleTrigger : MonoBehaviour
         
         // Calcular dirección desde enemigo hacia jugador
         Vector3 directionToPlayer = (playerTransform.position - enemyTransform.position).normalized;
-        
-        // Solo usar la componente horizontal (X, Z) - ASEGURAR retroceso
         directionToPlayer.y = 0f;
         
-        // Si la dirección es muy pequeña, usar una dirección por defecto
         if (directionToPlayer.magnitude < 0.1f)
         {
-            directionToPlayer = Vector3.back; // Retroceder hacia atrás por defecto
+            directionToPlayer = Vector3.back;
         }
         else
         {
             directionToPlayer = directionToPlayer.normalized;
         }
         
-        // Posición final del jugador (FORZAR retroceso del enemigo)
+        // Reducir distancia de retroceso para jugador pequeño
         Vector3 playerBattlePosition = enemyTransform.position + (directionToPlayer * playerRetreatDistance);
-        
-        // Mantener la Y original del jugador
         playerBattlePosition.y = playerTransform.position.y;
         
-        // Mover jugador a posición de batalla
         playerTransform.position = playerBattlePosition;
         
-        // Hacer que ambos se miren mutuamente
-        Vector3 lookTarget = new Vector3(enemyTransform.position.x, playerTransform.position.y, enemyTransform.position.z);
+        // Ajustar altura de mirada para jugador pequeño
+        Vector3 lookTarget = new Vector3(enemyTransform.position.x, playerTransform.position.y + 0.5f, enemyTransform.position.z);
         playerTransform.LookAt(lookTarget);
         
         Vector3 enemyLookTarget = new Vector3(playerTransform.position.x, enemyTransform.position.y, playerTransform.position.z);

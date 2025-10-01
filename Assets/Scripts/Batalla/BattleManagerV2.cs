@@ -586,7 +586,8 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void CreateParryIndicator()
     {
-        if (parryIndicatorPrefab == null || enemyController == null) return;
+        if (parryIndicatorPrefab == null || enemyController == null || enemyController.gameObject == null) 
+            return;
         
         if (activeParryIndicator != null)
         {
@@ -595,12 +596,13 @@ public class BattleManagerV2 : MonoBehaviour
         
         Debug.Log("Parry window opened! Creating indicator");
         
-        Vector3 spawnPos = enemyController.transform.position + Vector3.up * 2f;
+        // Ajustar altura del indicador para jugador pequeño
+        Vector3 spawnPos = enemyController.transform.position + Vector3.up * 1.5f; // REDUCIR de 2f a 1.5f
         Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
 
         activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyController.transform);
-        activeParryIndicator.transform.localScale = Vector3.one * 1.0f;
-        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * 2f);
+        activeParryIndicator.transform.localScale = Vector3.one * 0.8f; // REDUCIR de 1.0f a 0.8f
+        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * 1.5f);
     }
 
     /// <summary>
