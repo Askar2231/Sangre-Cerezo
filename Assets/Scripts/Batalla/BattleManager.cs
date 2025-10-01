@@ -40,6 +40,11 @@ public class BattleManager : MonoBehaviour
 
 
 
+     public bool IsBattleActive()
+    {
+        return battleIsActive;
+    }
+
     public void StartBattle()
     {
         playerCombat.enabled = true;
@@ -304,11 +309,7 @@ public class BattleManager : MonoBehaviour
         return currentEnemy;
     }
 
-    public bool IsBattleActive()
-    {
-        return battleIsActive;
-    }
-
+    
     private void ShowParryIndicator(float duration)
     {
         if (parryIndicatorPrefab == null || enemyLoader == null) return;
