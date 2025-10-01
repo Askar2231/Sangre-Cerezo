@@ -36,6 +36,9 @@ public class InputIconMapper : MonoBehaviour
     [SerializeField] private Sprite keyboardParry;
     [SerializeField] private Sprite keyboardConfirm;
     [SerializeField] private Sprite keyboardCancel;
+    [SerializeField] private Sprite keyboardAttack;
+    [SerializeField] private Sprite keyboardSkill;
+    [SerializeField] private Sprite keyboardEndTurn;
 
     [Header("Sprites de Xbox")]
     [SerializeField] private Sprite xboxMove;
@@ -45,6 +48,9 @@ public class InputIconMapper : MonoBehaviour
     [SerializeField] private Sprite xboxParry;
     [SerializeField] private Sprite xboxConfirm;
     [SerializeField] private Sprite xboxCancel;
+    [SerializeField] private Sprite xboxAttack;
+    [SerializeField] private Sprite xboxSkill;
+    [SerializeField] private Sprite xboxEndTurn;
 
     [Header("Sprites de PlayStation")]
     [SerializeField] private Sprite psMove;
@@ -54,6 +60,9 @@ public class InputIconMapper : MonoBehaviour
     [SerializeField] private Sprite psParry;
     [SerializeField] private Sprite psConfirm;
     [SerializeField] private Sprite psCancel;
+    [SerializeField] private Sprite psAttack;
+    [SerializeField] private Sprite psSkill;
+    [SerializeField] private Sprite psEndTurn;
 
     [Header("Configuración")]
     [SerializeField] private bool debugMode = false;
@@ -184,6 +193,9 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = keyboardParry;
                 currentIconSet[InputAction.Confirm] = keyboardConfirm;
                 currentIconSet[InputAction.Cancel] = keyboardCancel;
+                currentIconSet[InputAction.Attack] = keyboardAttack;
+                currentIconSet[InputAction.Skill] = keyboardSkill;
+                currentIconSet[InputAction.EndTurn] = keyboardEndTurn;
                 break;
 
             case InputDeviceType.XboxController:
@@ -194,6 +206,9 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = xboxParry;
                 currentIconSet[InputAction.Confirm] = xboxConfirm;
                 currentIconSet[InputAction.Cancel] = xboxCancel;
+                currentIconSet[InputAction.Attack] = xboxAttack;
+                currentIconSet[InputAction.Skill] = xboxSkill;
+                currentIconSet[InputAction.EndTurn] = xboxEndTurn;
                 break;
 
             case InputDeviceType.PlayStationController:
@@ -204,6 +219,9 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = psParry;
                 currentIconSet[InputAction.Confirm] = psConfirm;
                 currentIconSet[InputAction.Cancel] = psCancel;
+                currentIconSet[InputAction.Attack] = psAttack;
+                currentIconSet[InputAction.Skill] = psSkill;
+                currentIconSet[InputAction.EndTurn] = psEndTurn;
                 break;
 
             case InputDeviceType.GenericGamepad:
@@ -215,6 +233,9 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = xboxParry;
                 currentIconSet[InputAction.Confirm] = xboxConfirm;
                 currentIconSet[InputAction.Cancel] = xboxCancel;
+                currentIconSet[InputAction.Attack] = xboxAttack;
+                currentIconSet[InputAction.Skill] = xboxSkill;
+                currentIconSet[InputAction.EndTurn] = xboxEndTurn;
                 break;
         }
     }
@@ -306,8 +327,8 @@ public class InputIconMapper : MonoBehaviour
     }
 
     /// <summary>
-    /// Reemplaza placeholders en texto con nombres de acciones
-    /// Ejemplo: "Presiona {Move} para moverte" -> "Presiona WASD para moverte"
+    /// Reemplaza placeholders en texto con sprites (si están disponibles) o texto
+    /// Ejemplo: "Presiona {Move} para moverte" -> "Presiona [sprite] para moverte"
     /// </summary>
     public string ProcessTextPlaceholders(string text)
     {
@@ -315,19 +336,37 @@ public class InputIconMapper : MonoBehaviour
 
         string processedText = text;
 
-        // Reemplazar cada placeholder
-        processedText = processedText.Replace("{Move}", GetTextForAction(InputAction.Move));
-        processedText = processedText.Replace("{Run}", GetTextForAction(InputAction.Run));
-        processedText = processedText.Replace("{Interact}", GetTextForAction(InputAction.Interact));
-        processedText = processedText.Replace("{QTE}", GetTextForAction(InputAction.QTE));
-        processedText = processedText.Replace("{Parry}", GetTextForAction(InputAction.Parry));
-        processedText = processedText.Replace("{Confirm}", GetTextForAction(InputAction.Confirm));
-        processedText = processedText.Replace("{Cancel}", GetTextForAction(InputAction.Cancel));
-        processedText = processedText.Replace("{Attack}", GetTextForAction(InputAction.Attack));
-        processedText = processedText.Replace("{Skill}", GetTextForAction(InputAction.Skill));
-        processedText = processedText.Replace("{EndTurn}", GetTextForAction(InputAction.EndTurn));
+        // Reemplazar cada placeholder con sprite tag o texto
+        processedText = processedText.Replace("{Move}", GetSpriteOrText(InputAction.Move));
+        processedText = processedText.Replace("{Run}", GetSpriteOrText(InputAction.Run));
+        processedText = processedText.Replace("{Interact}", GetSpriteOrText(InputAction.Interact));
+        processedText = processedText.Replace("{QTE}", GetSpriteOrText(InputAction.QTE));
+        processedText = processedText.Replace("{Parry}", GetSpriteOrText(InputAction.Parry));
+        processedText = processedText.Replace("{Confirm}", GetSpriteOrText(InputAction.Confirm));
+        processedText = processedText.Replace("{Cancel}", GetSpriteOrText(InputAction.Cancel));
+        processedText = processedText.Replace("{Attack}", GetSpriteOrText(InputAction.Attack));
+        processedText = processedText.Replace("{Skill}", GetSpriteOrText(InputAction.Skill));
+        processedText = processedText.Replace("{EndTurn}", GetSpriteOrText(InputAction.EndTurn));
 
         return processedText;
+    }
+
+    /// <summary>
+    /// Obtiene sprite tag de TMP si el sprite existe, sino devuelve texto
+    /// </summary>
+    private string GetSpriteOrText(InputAction action)
+    {
+        Sprite sprite = GetIconForAction(action);
+        
+        if (sprite != null)
+        {
+            // Usar el nombre del sprite para el tag de TMP
+            // Formato: <sprite name="nombre_sprite">
+            return $"<sprite name=\"{sprite.name}\">";
+        }
+        
+        // Fallback a texto si no hay sprite
+        return GetTextForAction(action);
     }
 
     public InputDeviceType GetCurrentDeviceType()
