@@ -85,34 +85,22 @@ public class BattleTrigger : MonoBehaviour
             return;
         }
         
-        // Calcular dirección desde enemigo hacia jugador
-        Vector3 directionToPlayer = (playerTransform.position - enemyTransform.position).normalized;
-        directionToPlayer.y = 0f;
+        // SIMPLE: Solo mover al jugador 1 unidad hacia atrás en Z
+        Vector3 playerBattlePosition = playerTransform.position;
+        playerBattlePosition.z -= 1f; // Retroceder exactamente 1 unidad en Z
         
-        if (directionToPlayer.magnitude < 0.1f)
-        {
-            directionToPlayer = Vector3.back;
-        }
-        else
-        {
-            directionToPlayer = directionToPlayer.normalized;
-        }
-        
-        // Reducir distancia de retroceso para jugador pequeño
-        Vector3 playerBattlePosition = enemyTransform.position + (directionToPlayer * playerRetreatDistance);
-        playerBattlePosition.y = playerTransform.position.y;
-        
+        // Aplicar nueva posición
         playerTransform.position = playerBattlePosition;
         
-        // Ajustar altura de mirada para jugador pequeño
-        Vector3 lookTarget = new Vector3(enemyTransform.position.x, playerTransform.position.y + 0.5f, enemyTransform.position.z);
+        // Hacer que ambos se miren mutuamente
+        Vector3 lookTarget = new Vector3(enemyTransform.position.x, playerTransform.position.y, enemyTransform.position.z);
         playerTransform.LookAt(lookTarget);
         
         Vector3 enemyLookTarget = new Vector3(playerTransform.position.x, enemyTransform.position.y, playerTransform.position.z);
         enemyTransform.LookAt(enemyLookTarget);
         
-        Debug.Log($"Characters positioned for battle. Player retreated {playerRetreatDistance}m from enemy.");
-        Debug.Log($"Player position: {playerTransform.position}, Enemy position: {enemyTransform.position}");
+        Debug.Log($"Player moved 1 unit back in Z. New position: {playerTransform.position}");
+        Debug.Log($"Enemy position: {enemyTransform.position}");
     }
     
     /// <summary>

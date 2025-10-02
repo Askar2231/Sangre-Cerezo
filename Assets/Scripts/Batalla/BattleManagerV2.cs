@@ -46,7 +46,9 @@ public class BattleManagerV2 : MonoBehaviour
     public bool IsBattleActive => battleResult == BattleResult.None;
     
     [Header("Parry System")]
-    [SerializeField] private GameObject parryIndicatorPrefab; // Prefab 3D del indicador
+    [SerializeField] private GameObject parryIndicatorPrefab;
+    [SerializeField] private float parryIndicatorHeight = 1.5f; // Nueva variable configurable
+    [SerializeField] private float parryIndicatorScale = 0.8f;  // Nueva variable configurable
     private GameObject activeParryIndicator;
 
     [Header("UI Health Display")]
@@ -596,13 +598,17 @@ public class BattleManagerV2 : MonoBehaviour
         
         Debug.Log("Parry window opened! Creating indicator");
         
-        // Ajustar altura del indicador para jugador pequeño
-        Vector3 spawnPos = enemyController.transform.position + Vector3.up * 1.5f; // REDUCIR de 2f a 1.5f
+        // Usar la altura configurable desde el Inspector
+        Vector3 spawnPos = enemyController.transform.position + Vector3.up * parryIndicatorHeight;
         Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
 
         activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyController.transform);
-        activeParryIndicator.transform.localScale = Vector3.one * 0.8f; // REDUCIR de 1.0f a 0.8f
-        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * 1.5f);
+        
+        // Usar la escala configurable desde el Inspector
+        activeParryIndicator.transform.localScale = Vector3.one * parryIndicatorScale;
+        
+        // Usar la altura configurable para el FollowTarget también
+        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * parryIndicatorHeight);
     }
 
     /// <summary>
