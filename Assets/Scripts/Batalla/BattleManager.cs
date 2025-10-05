@@ -45,6 +45,11 @@ public class BattleManager : MonoBehaviour
         return battleIsActive;
     }
 
+     public bool IsBattleActive()
+    {
+        return battleIsActive;
+    }
+
     public void StartBattle()
     {
         playerCombat.enabled = true;
