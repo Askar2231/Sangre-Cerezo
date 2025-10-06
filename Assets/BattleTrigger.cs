@@ -85,9 +85,18 @@ public class BattleTrigger : MonoBehaviour
             return;
         }
         
-        // SIMPLE: Solo mover al jugador 1 unidad hacia atrás en Z
-        Vector3 playerBattlePosition = playerTransform.position;
-        playerBattlePosition.z -= 1f; // Retroceder exactamente 1 unidad en Z
+        // Obtener la dirección hacia donde está mirando el enemigo
+        Vector3 enemyForward = enemyTransform.forward;
+        
+        // Solo usar componentes horizontales (X, Z) - ignorar Y
+        enemyForward.y = 0f;
+        enemyForward = enemyForward.normalized;
+        
+        // Posicionar al jugador 30 unidades EN LA DIRECCIÓN que mira el enemigo
+        Vector3 playerBattlePosition = enemyTransform.position + (enemyForward * 30f);
+        
+        // Mantener la Y original del jugador
+        playerBattlePosition.y = playerTransform.position.y;
         
         // Aplicar nueva posición
         playerTransform.position = playerBattlePosition;
@@ -99,8 +108,9 @@ public class BattleTrigger : MonoBehaviour
         Vector3 enemyLookTarget = new Vector3(playerTransform.position.x, enemyTransform.position.y, playerTransform.position.z);
         enemyTransform.LookAt(enemyLookTarget);
         
-        Debug.Log($"Player moved 1 unit back in Z. New position: {playerTransform.position}");
+        Debug.Log($"Player positioned 30 units in enemy's forward direction. New position: {playerTransform.position}");
         Debug.Log($"Enemy position: {enemyTransform.position}");
+        Debug.Log($"Enemy forward direction: {enemyForward}");
     }
     
     /// <summary>
