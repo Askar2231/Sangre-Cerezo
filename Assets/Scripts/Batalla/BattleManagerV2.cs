@@ -54,7 +54,10 @@ public class BattleManagerV2 : MonoBehaviour
     [Header("UI Health Display")]
     [SerializeField] private TextMeshProUGUI playerHealthText;
     [SerializeField] private TextMeshProUGUI enemyHealthText;
-    [SerializeField] private TextMeshProUGUI playerStaminaText; // AGREGAR ESTA LÍNEA
+    [SerializeField] private TextMeshProUGUI playerStaminaText;
+
+    [Header("UI Turn Display")]
+    [SerializeField] private TextMeshProUGUI turnDisplayText; // AGREGAR ESTA LÍNEA
     
     private void Awake()
     {
@@ -107,6 +110,9 @@ public class BattleManagerV2 : MonoBehaviour
         
         // Actualizar UI inicial de vida
         UpdateHealthUI();
+        
+        // Mostrar que la batalla está comenzando
+        UpdateTurnDisplayUI("BATTLE START");
         
         // Start battle
         battleResult = BattleResult.None;
@@ -195,6 +201,10 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("=== PLAYER TURN ===");
         playerController.Character.StaminaManager.RestoreToMax();
+    
+        // Actualizar display de turno
+        UpdateTurnDisplayUI("PLAYER TURN");
+    
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
     
@@ -302,6 +312,10 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("=== ENEMY TURN ===");
         enemyController.Character.StaminaManager.RestoreToMax();
+        
+        // Actualizar display de turno
+        UpdateTurnDisplayUI("ENEMY TURN");
+        
         turnManager.ChangeEnemyTurnState(EnemyTurnState.Thinking);
         enemyController.ExecuteThinking();
     }
@@ -401,6 +415,11 @@ public class BattleManagerV2 : MonoBehaviour
     private void EndBattle()
     {
         Debug.Log($"=== BATTLE END: {battleResult} ===");
+        
+        // Mostrar resultado de la batalla
+        string resultText = battleResult == BattleResult.PlayerVictory ? "VICTORY!" : "DEFEAT!";
+        UpdateTurnDisplayUI(resultText);
+        
         OnBattleEnded?.Invoke(battleResult);
         
         // Re-enable player movement after battle
@@ -466,6 +485,17 @@ public class BattleManagerV2 : MonoBehaviour
             float currentStamina = playerController.Character.StaminaManager.CurrentStamina;
             float maxStamina = playerController.Character.StaminaManager.MaxStamina;
             playerStaminaText.text = $"Player Stamina: {currentStamina:F0}/{maxStamina:F0}";
+        }
+    }
+
+    /// <summary>
+    /// Updates turn display text
+    /// </summary>
+    private void UpdateTurnDisplayUI(string turnText)
+    {
+        if (turnDisplayText != null)
+        {
+            turnDisplayText.text = turnText;
         }
     }
 
