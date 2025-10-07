@@ -40,15 +40,11 @@ public class BattleManager : MonoBehaviour
 
 
 
-     public bool IsBattleActive()
+    public bool IsBattleActive()
     {
         return battleIsActive;
     }
 
-     public bool IsBattleActive()
-    {
-        return battleIsActive;
-    }
 
     public void StartBattle()
     {
@@ -314,7 +310,7 @@ public class BattleManager : MonoBehaviour
         return currentEnemy;
     }
 
-    
+
     private void ShowParryIndicator(float duration)
     {
         if (parryIndicatorPrefab == null || enemyLoader == null) return;
@@ -353,5 +349,11 @@ public class BattleManager : MonoBehaviour
         }
 
         Destroy(indicator.gameObject);
+    }
+    
+    public void TryDodge()
+    {
+        // TODO: Implementar lógica de esquivar
+        Debug.Log("Intento de esquivar - Por implementar");
     }
 }

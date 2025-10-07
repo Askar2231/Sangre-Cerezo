@@ -1,7 +1,8 @@
 using UnityEngine;
 using TMPro; 
-using System.Collections.Generic; 
+using System.Collections.Generic;
 using UnityEngine.UI;
+
 
 public class InteractionManager : MonoBehaviour
 {
@@ -96,7 +97,8 @@ public class InteractionManager : MonoBehaviour
             if (i == 0) keyHint = "[Q] "; 
             else if (i == 1) keyHint = "[R] "; 
 
-            buttonText.text = keyHint + choice.choiceText; 
+            buttonText.text = keyHint + choice.choiceText;
+            buttonText.color = Color.black;  
 
             button.onClick.AddListener(() => SelectChoice(choice));
             currentChoiceButtons.Add(button);
