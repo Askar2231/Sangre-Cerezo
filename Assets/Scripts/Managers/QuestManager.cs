@@ -26,7 +26,7 @@ public class QuestManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
         
-        // Registrar callbacks inmediatamente después de inicializar la instancia
+       
         if (Instance == this)
         {
             Invoke(nameof(RegisterChoiceCallbacks), 0.2f);
@@ -38,10 +38,7 @@ public class QuestManager : MonoBehaviour
         UnregisterChoiceCallbacks();
     }
 
-    /// <summary>
-    /// Registra todos los callbacks de las elecciones en el ChoiceEventSystem.
-    /// Los IDs deben coincidir con los que configures en tus ScriptableObjects.
-    /// </summary>
+ 
     private void RegisterChoiceCallbacks()
     {
         if (callbacksRegistered) return;
@@ -66,9 +63,7 @@ public class QuestManager : MonoBehaviour
         Debug.Log("<color=green>✓ Callbacks de misión registrados exitosamente en ChoiceEventSystem.</color>");
     }
 
-    /// <summary>
-    /// Desregistra los callbacks cuando se destruye el QuestManager.
-    /// </summary>
+
     private void UnregisterChoiceCallbacks()
     {
         if (ChoiceEventSystem.Instance != null)
@@ -82,7 +77,7 @@ public class QuestManager : MonoBehaviour
         }
     }
 
-    // --- Métodos de Control de Estado de la Misión ---
+ 
 
     public void StartRobberyQuest()
     {
@@ -108,67 +103,59 @@ public class QuestManager : MonoBehaviour
         Debug.Log("Jugador rechazó ayudar al mercader.");
     }
 
-    /// <summary>
-    /// Spawnea al ladrón y añade automáticamente el detector de proximidad.
-    /// El combate se iniciará cuando el jugador se acerque.
-    /// </summary>
-    private void SpawnThiefAndStartCombat()
-    {
-        if (thiefPrefab != null && thiefSpawnPoint != null)
-        {
-            spawnedThief = Instantiate(thiefPrefab, thiefSpawnPoint.position, thiefSpawnPoint.rotation);
-            
-            // Añadir el detector de proximidad si no lo tiene
-            ThiefProximityDetector detector = spawnedThief.GetComponent<ThiefProximityDetector>();
-            if (detector == null)
-            {
-                detector = spawnedThief.AddComponent<ThiefProximityDetector>();
-                Debug.Log("<color=cyan>ThiefProximityDetector añadido automáticamente al ladrón.</color>");
-            }
-            
-            Debug.Log("¡Ladrón aparecido! Acércate para iniciar el combate.");
-        }
-        else
-        {
-            Debug.LogError("Prefab del ladrón o punto de spawn no asignados en QuestManager.");
-            UpdateQuestState(RobberyQuestState.NotStarted);
-        }
-    }
 
-    /// <summary>
-    /// Llama a este método desde el script del ladrón cuando el jugador se acerque.
-    /// </summary>
-    public void StartThiefCombat()
+   private void SpawnThiefAndStartCombat()
+{
+    if (thiefPrefab != null && thiefSpawnPoint != null)
     {
-        Debug.Log($"<color=cyan>StartThiefCombat llamado. Estado actual: {currentQuestState}</color>");
+        spawnedThief = Instantiate(thiefPrefab, thiefSpawnPoint.position, thiefSpawnPoint.rotation);
         
-        if (currentQuestState == RobberyQuestState.CombatActive)
+        // Desactivar BattleTrigger hasta que el jugador se acerque
+        BattleTrigger battleTrigger = spawnedThief.GetComponent<BattleTrigger>();
+        if (battleTrigger != null)
         {
-            Debug.Log("¡Iniciando combate con el ladrón!");
-            // TODO: Aquí llamarías a tu CombatManager para iniciar el combate real
-            // CombatManager.Instance.StartCombat(spawnedThief);
-            
-            // Simulación temporal (elimina esto cuando tengas tu CombatManager real)
-            Invoke("SimulateCombatWin", 2f);
+            battleTrigger.enabled = false;
         }
-        else
+        
+        // Añadir el detector de proximidad
+        ThiefProximityDetector detector = spawnedThief.GetComponent<ThiefProximityDetector>();
+        if (detector == null)
         {
-            Debug.LogWarning($"No se puede iniciar combate. Estado actual: {currentQuestState}, se esperaba: CombatActive");
+            detector = spawnedThief.AddComponent<ThiefProximityDetector>();
+            Debug.Log("<color=cyan>ThiefProximityDetector añadido automáticamente al ladrón.</color>");
         }
+        
+        Debug.Log("¡Ladrón aparecido! Acércate para iniciar el combate.");
     }
+    else
+    {
+        Debug.LogError("Prefab del ladrón o punto de spawn no asignados en QuestManager.");
+        UpdateQuestState(RobberyQuestState.NotStarted);
+    }
+}
 
-    /// <summary>
-    /// Simulación de victoria en combate (REEMPLAZAR por la lógica real de tu CombatManager).
-    /// </summary>
+  public void StartThiefCombat()
+{
+    Debug.Log($"<color=cyan>StartThiefCombat llamado. Estado actual: {currentQuestState}</color>");
+    
+    if (currentQuestState == RobberyQuestState.CombatActive && spawnedThief != null)
+    {
+        Debug.Log("¡Iniciando combate con el ladrón!");
+        
+        
+    }
+    else
+    {
+        Debug.LogWarning($"No se puede iniciar combate. Estado: {currentQuestState}, Thief: {spawnedThief != null}");
+    }
+}
+    
     private void SimulateCombatWin()
     {
         OnThiefCombatEnd(true);
     }
 
-    /// <summary>
-    /// Maneja el final del combate con el ladrón. Recibe si el jugador ganó o perdió.
-    /// (Normalmente llamado por tu CombatManager).
-    /// </summary>
+ 
     public void OnThiefCombatEnd(bool playerWon)
     {
         if (currentQuestState != RobberyQuestState.CombatActive) return;
@@ -208,10 +195,7 @@ public class QuestManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Inicia el diálogo final con el mercader. 
-    /// Llama a este método desde el NPCInteraction del mercader cuando el jugador interactúe con él.
-    /// </summary>
+    
     public void StartFinalMerchantDialogue()
     {
         Debug.Log($"<color=cyan>StartFinalMerchantDialogue llamado. Estado actual: {currentQuestState}</color>");
