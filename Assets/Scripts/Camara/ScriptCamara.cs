@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class ThirdPersonJRPGCamera : MonoBehaviour
 {
@@ -31,6 +32,9 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     public BattleManagerV2 battleManager;
     public Transform enemy; // Referencia al enemigo para enfocar
 
+    [Header("Input System")] // <-- AÑADE ESTA LÍNEA
+    public InputActionReference lookAction;
+
     float yaw;
     float pitch;
     float lastInputTime;
@@ -45,6 +49,18 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         pitch = angles.x;
         
         UpdateCursorState();
+    }
+
+    void OnEnable()
+    {
+        if (lookAction != null)
+            lookAction.action.Enable();
+    }
+
+    void OnDisable()
+    {
+        if (lookAction != null)
+            lookAction.action.Disable();
     }
 
     void LateUpdate()
@@ -72,8 +88,14 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         }
 
         // Entrada mouse (solo fuera de combate)
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        //float mouseX = Input.GetAxis("Mouse X");
+        //float mouseY = Input.GetAxis("Mouse Y");
+
+        Vector2 lookInput = lookAction.action.ReadValue<Vector2>();
+
+        // Asignamos los componentes X e Y a las variables que el script ya usa
+        float mouseX = lookInput.x;
+        float mouseY = lookInput.y;
 
         if (Mathf.Abs(mouseX) > 0.01f || Mathf.Abs(mouseY) > 0.01f)
         {

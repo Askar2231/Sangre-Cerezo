@@ -9,9 +9,12 @@ public class BattleCharacter : MonoBehaviour
     [Header("Stats")]
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private float maxStamina = 100f;
-    
+
     [Header("Components")]
     [SerializeField] private Animator animator;
+    
+    [Header("Character Type")]
+    [SerializeField] private bool isPlayer = false;
     
     // Properties
     public float MaxHealth => maxHealth;
@@ -44,6 +47,12 @@ public class BattleCharacter : MonoBehaviour
         OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
         Debug.Log($"{gameObject.name} took {damage} damage! HP: {CurrentHealth}/{maxHealth}");
         
+        if (isPlayer && GamepadVibrationManager.Instance != null)
+        {
+            float damagePercent = damage / maxHealth;
+            GamepadVibrationManager.Instance.VibrateOnTakeDamage(damagePercent);
+        }
+        
         if (CurrentHealth <= 0)
         {
             Die();
@@ -62,6 +71,12 @@ public class BattleCharacter : MonoBehaviour
         
         OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
         Debug.Log($"{gameObject.name} healed {amount} HP! HP: {CurrentHealth}/{maxHealth}");
+
+        
+        if (isPlayer && GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnHeal();
+        }
     }
     
     /// <summary>
@@ -71,6 +86,12 @@ public class BattleCharacter : MonoBehaviour
     {
         Debug.Log($"{gameObject.name} has been defeated!");
         OnDeath?.Invoke();
+
+       
+        if (isPlayer && GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnDeath();
+        }
     }
     
     /// <summary>

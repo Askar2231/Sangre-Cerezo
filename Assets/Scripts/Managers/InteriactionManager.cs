@@ -94,8 +94,8 @@ public class InteractionManager : MonoBehaviour
             TextMeshProUGUI buttonText = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
 
             string keyHint = ""; 
-            if (i == 0) keyHint = "[Q] "; 
-            else if (i == 1) keyHint = "[R] "; 
+            if (i == 0) keyHint = "[Q/X] "; 
+            else if (i == 1) keyHint = "[R/B] "; 
 
             buttonText.text = keyHint + choice.choiceText;
             buttonText.color = Color.black;  
@@ -144,17 +144,22 @@ public class InteractionManager : MonoBehaviour
     {
         if (currentChoiceButtons.Count > 0)
         {
-            if (Input.GetKeyDown(KeyCode.Q))
+            // Opción 1 - Tecla Q o Botón X del mando
+            if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.JoystickButton2))
             {
                 if (currentChoiceButtons.Count > 0)
                 {
+                    Debug.Log("<color=cyan>Opción 1 seleccionada (Q o X mando)</color>");
                     currentChoiceButtons[0].onClick.Invoke(); 
                 }
             }
-            else if (Input.GetKeyDown(KeyCode.R))
+            
+            // Opción 2 - Tecla R o Botón B del mando
+            else if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.JoystickButton1))
             {
                 if (currentChoiceButtons.Count > 1)
                 {
+                    Debug.Log("<color=magenta>Opción 2 seleccionada (R o B mando)</color>");
                     currentChoiceButtons[1].onClick.Invoke(); 
                 }
             }
