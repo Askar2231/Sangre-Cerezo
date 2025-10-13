@@ -8529,8 +8529,8 @@ MonoBehaviour:
   offset: {x: 0, y: 18, z: -19}
   mouseXSens: 180
   mouseYSens: 120
-  minPitch: -45
-  maxPitch: 45
+  minPitch: 0
+  maxPitch: 0
   autoFollowDelay: 1.023013e+11
   autoFollowSpeed: 5
   followDistance: 2
