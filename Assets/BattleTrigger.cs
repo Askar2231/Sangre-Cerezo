@@ -7,41 +7,67 @@ public class BattleTrigger : MonoBehaviour
 {
     [Header("Battle Settings")]
     [SerializeField] private BattleManagerV2 battleManager;
-    [SerializeField] private float playerRetreatDistance = 2f; // REDUCIR de 5f a 2f para jugador pequeño
     
     [Header("References")]
     [SerializeField] private Transform playerTransform; // El transform del jugador
-    [SerializeField] private Transform enemyTransform; // El transform del enemigo
+    [SerializeField] private Transform enemyTransform; // El transform del enemigo (ESTE GameObject)
     
     [Header("UI")]
     [SerializeField] private GameObject battleUICanvas; // Canvas de UI de combate
     
     private bool battleTriggered = false;
+    private EnemyBattleController thisEnemyController; // Controller de ESTE enemigo
     
     private void Awake()
     {
+        Debug.Log($"BattleTrigger Awake on: {gameObject.name}");
+        
         // Si no se asignan manualmente, buscar automáticamente
         if (playerTransform == null)
         {
             var playerController = FindFirstObjectByType<PlayerBattleController>();
             if (playerController != null)
+            {
                 playerTransform = playerController.transform;
+                Debug.Log($"Auto-found player: {playerTransform.name}");
+            }
         }
         
-        if (enemyTransform == null)
+        // IMPORTANTE: Obtener el EnemyBattleController de ESTE GameObject
+        thisEnemyController = GetComponent<EnemyBattleController>();
+        if (thisEnemyController == null)
         {
-            var enemyController = FindFirstObjectByType<EnemyBattleController>();
-            if (enemyController != null)
-                enemyTransform = enemyController.transform;
+            // Si no está en este GameObject, buscar en el padre
+            thisEnemyController = GetComponentInParent<EnemyBattleController>();
         }
+        
+        // El enemyTransform es ESTE GameObject
+        if (enemyTransform == null)
+            enemyTransform = transform;
         
         if (battleManager == null)
+        {
             battleManager = FindFirstObjectByType<BattleManagerV2>();
+            if (battleManager != null)
+            {
+                Debug.Log($"Auto-found battle manager: {battleManager.name}");
+            }
+        }
         
         // Asegurar que el canvas de batalla esté desactivado al inicio
         if (battleUICanvas != null)
         {
             battleUICanvas.SetActive(false);
+        }
+        
+        // Validar que encontramos el EnemyBattleController
+        if (thisEnemyController == null)
+        {
+            Debug.LogError($"No EnemyBattleController found on {gameObject.name} or its parent! This trigger won't work.");
+        }
+        else
+        {
+            Debug.Log($"Found EnemyBattleController: {thisEnemyController.name} on {gameObject.name}");
         }
     }
     
@@ -52,7 +78,7 @@ public class BattleTrigger : MonoBehaviour
         
         if (other.CompareTag("Player") || other.GetComponent<PlayerBattleController>() != null)
         {
-            Debug.Log("Player contacted enemy! Starting battle...");
+            Debug.Log($"Player contacted enemy: {gameObject.name}! Starting battle...");
             StartBattleSequence();
         }
     }
@@ -146,16 +172,17 @@ public class BattleTrigger : MonoBehaviour
     /// </summary>
     private void InitiateBattle()
     {
-        if (battleManager != null)
+        if (battleManager != null && thisEnemyController != null)
         {
             // Suscribirse al evento de fin de batalla para desactivar UI
             battleManager.OnBattleEnded += HandleBattleEnded;
             
-            battleManager.StartBattle();
+            // PASAR EL ENEMIGO ESPECÍFICO al BattleManager
+            battleManager.StartBattleWithEnemy(thisEnemyController);
         }
         else
         {
-            Debug.LogError("BattleManager not found! Cannot start battle.");
+            Debug.LogError("BattleManager or EnemyBattleController not found! Cannot start battle.");
         }
     }
     
@@ -175,21 +202,42 @@ public class BattleTrigger : MonoBehaviour
             battleManager.OnBattleEnded -= HandleBattleEnded;
         }
         
-        // Si el jugador ganó, destruir el trigger para evitar futuras activaciones
+        // Si el jugador ganó, destruir el enemigo y trigger
         if (result == BattleResult.PlayerVictory)
         {
-            Debug.Log("Player victory! Destroying battle trigger...");
-            Destroy(gameObject); // Destruir el trigger también
+            Debug.Log("Player victory! Cleaning up...");
+            
+            // FORZAR reset del BattleManager
+            if (battleManager != null)
+            {
+                battleManager.ForceReset();
+            }
+            
+            // Destruir después de un delay para permitir efectos
+            Invoke(nameof(DestroyAfterVictory), 1.5f);
         }
         else
         {
-            // Si el jugador perdió, resetear trigger después de un delay
+            // Si el jugador perdió, resetear para permitir reintento
+            if (battleManager != null)
+            {
+                battleManager.ForceReset();
+            }
+            
             Invoke(nameof(ResetTrigger), 2f);
         }
     }
 
+    /// <summary>
+    /// Destruye el enemigo y trigger después de victoria
+    /// </summary>
+    private void DestroyAfterVictory()
+    {
+        Debug.Log("Destroying defeated enemy and trigger...");
+        Destroy(gameObject); // Esto destruye todo el enemigo + trigger
+    }
+
     private void OnDestroy()
-    
     {
         // Limpiar suscripciones al destruir
         if (battleManager != null)
@@ -204,6 +252,6 @@ public class BattleTrigger : MonoBehaviour
     public void ResetTrigger()
     {
         battleTriggered = false;
+        Debug.Log($"Trigger reset on: {gameObject.name}");
     }
-    
 }

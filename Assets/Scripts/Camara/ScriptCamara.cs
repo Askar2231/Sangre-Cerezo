@@ -149,18 +149,28 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     }
 
     /// <summary>
-    /// Verifica si estamos en combate activo (no solo inicializado)
+    /// Verifica si estamos en combate activo
     /// </summary>
     private bool IsInCombat()
     {
-        if (battleManager == null) return false;
+        if (battleManager == null) 
+        {
+            return false;
+        }
         
-        // Solo activar modo combate durante estados activos de batalla
+        // AÑADIR debugging temporal
         BattleState currentState = battleManager.CurrentState;
+        bool isActive = battleManager.IsBattleActive;
         
-        return currentState == BattleState.PlayerTurn || 
-               currentState == BattleState.EnemyTurn;
-        // NO incluir BattleState.BattleStart ni BattleState.BattleEnd
+        bool inCombat = isActive && (currentState == BattleState.PlayerTurn || currentState == BattleState.EnemyTurn);
+        
+        // DEBUG TEMPORAL - quitar después
+        if (Time.frameCount % 60 == 0) // cada 60 frames
+        {
+            Debug.Log($"Camera Combat Check - State: {currentState}, Active: {isActive}, InCombat: {inCombat}");
+        }
+        
+        return inCombat;
     }
 
     /// <summary>
