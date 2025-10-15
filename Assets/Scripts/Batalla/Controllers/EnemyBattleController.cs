@@ -134,33 +134,33 @@ public class EnemyBattleController : MonoBehaviour
         Debug.Log("Enemy attack complete (simulated animation finished)");
         OnAttackComplete?.Invoke();
     }
-    
+
     /// <summary>
     /// Rutina de ataque original con animaciones (para cuando estén disponibles)
     /// </summary>
     private IEnumerator AttackRoutineWithAnimations()
     {
         Debug.Log("Enemy attacks!");
-        
+
         // Play attack animation
         // enemyCharacter.Animator.Play(attackAnimationName);
-        
+
         // Wait until parry window timing
         yield return new WaitForSeconds(parryWindowStartTime);
-        
+
         // Open parry window
         if (parrySystem != null)
         {
             parrySystem.OpenParryWindow();
         }
-        
+
         // Wait until damage application time
         float remainingTime = damageApplicationTime - parryWindowStartTime;
         if (remainingTime > 0)
         {
             yield return new WaitForSeconds(remainingTime);
         }
-        
+
         // Apply damage if not parried
         if (!attackWasParried)
         {
@@ -174,18 +174,18 @@ public class EnemyBattleController : MonoBehaviour
         {
             Debug.Log("Attack was parried! No damage dealt.");
         }
-        
+
         // Wait for animation to complete
         float finalWait = attackDuration - damageApplicationTime;
         if (finalWait > 0)
         {
             yield return new WaitForSeconds(finalWait);
         }
-        
+
         OnAttackComplete?.Invoke();
     }
     
-    private void HandleParrySuccess()
+    /*private void HandleParrySuccess()
     {
         attackWasParried = true;
         
@@ -195,6 +195,13 @@ public class EnemyBattleController : MonoBehaviour
             target.StaminaManager.AddStamina(parrySystem.StaminaReward);
             Debug.Log($"Parry successful! Gained {parrySystem.StaminaReward} stamina!");
         }
+    }*/
+    
+    private void HandleParrySuccess()
+    {
+        attackWasParried = true;
+        Debug.Log("Enemy attack was parried!");
+        // La stamina y el contrataque se manejan en BattleManager
     }
     
     private void HandleParryFail()
