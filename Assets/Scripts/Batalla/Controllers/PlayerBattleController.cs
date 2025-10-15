@@ -8,23 +8,27 @@ public class PlayerBattleController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private BattleCharacter playerCharacter;
-    
+
     [Header("Attack Data")]
     [SerializeField] private AttackAnimationData lightAttackData;
-    
+
     [Header("Skills")]
     [SerializeField] private SkillData[] availableSkills;
-    
+
+    [Header("Parry Animations")]
+    [SerializeField] private string parryAnimationName = "Parry";
+    [SerializeField] private string perfectParryAnimationName = "ParryPerfect";
+
     // Components
     private AnimationSequencer animationSequencer;
     private QTEManager qteManager;
-    
+
     public BattleCharacter Character => playerCharacter;
-    
+
     // Events
     public event Action OnActionComplete;
     public event Action<ActionType> OnActionStarted;
-    
+
     private void Awake()
     {
         if (playerCharacter == null)
@@ -32,20 +36,20 @@ public class PlayerBattleController : MonoBehaviour
             playerCharacter = GetComponent<BattleCharacter>();
         }
     }
-    
+
     public void Initialize(AnimationSequencer animSequencer, QTEManager qte)
     {
-        animationSequencer = animSequencer; // Puede ser null temporalmente
+        animationSequencer = animSequencer;
         qteManager = qte;
-        
+
         if (animationSequencer == null)
         {
-            Debug.LogWarning("AnimationSequencer is null - using temporary delay system");
+            Debug.LogWarning("AnimationSequencer is null - attacks will execute without animation tracking");
         }
-        
+
         Debug.Log("PlayerBattleController initialized");
     }
-    
+
     /// <summary>
     /// Execute light attack against target
     /// </summary>
@@ -56,33 +60,40 @@ public class PlayerBattleController : MonoBehaviour
             Debug.LogWarning("Cannot perform light attack - insufficient stamina or conditions not met");
             return;
         }
-        
+
         OnActionStarted?.Invoke(ActionType.LightAttack);
-        
-        // Si no hay AnimationSequencer, ejecutar inmediatamente
-        if (animationSequencer == null)
+
+        // Use AnimationSequencer if available
+        if (animationSequencer != null && lightAttackData != null)
         {
-            Debug.Log("No AnimationSequencer - executing attack immediately");
+            Debug.Log("Playing attack animation through AnimationSequencer");
+            animationSequencer.PlayAnimationSequence(
+                lightAttackData,
+                () =>
+                {
+                    OnActionComplete?.Invoke();
+
+                    // Haptic feedback on attack complete
+                    if (GamepadVibrationManager.Instance != null)
+                    {
+                        GamepadVibrationManager.Instance.VibrateOnLightAttack();
+                    }
+                },
+                () => ExecuteAttackDamage(target)
+            );
+        }
+        else
+        {
+            // Fallback: Execute immediately if no AnimationSequencer
+            Debug.LogWarning("No AnimationSequencer or attack data - executing attack immediately");
             ExecuteAttackDamage(target);
             OnActionComplete?.Invoke();
-            return;
-        }
-        
-        // Con AnimationSequencer (código original cuando esté disponible)
-        // animationSequencer.PlayAttackSequence(
-        //     lightAttackData,
-        //     () => ExecuteAttackDamage(target),
-        //     () => OnActionComplete?.Invoke()
-        // );
-        
-        // Por ahora, ejecutar inmediatamente también
-        ExecuteAttackDamage(target);
-        OnActionComplete?.Invoke();
 
-        
-        if (GamepadVibrationManager.Instance != null)
-        {
-            GamepadVibrationManager.Instance.VibrateOnLightAttack();
+            // Haptic feedback
+            if (GamepadVibrationManager.Instance != null)
+            {
+                GamepadVibrationManager.Instance.VibrateOnLightAttack();
+            }
         }
     }
 
@@ -96,34 +107,25 @@ public class PlayerBattleController : MonoBehaviour
             Debug.LogError($"Invalid skill index: {skillIndex}");
             return;
         }
-        
+
         if (!CanPerformAction(ActionType.Skill))
         {
             Debug.LogWarning("Cannot perform skill - insufficient stamina or conditions not met");
             return;
         }
-        
+
         var skill = availableSkills[skillIndex];
-        
+
         OnActionStarted?.Invoke(ActionType.Skill);
-        
-        // Si no hay AnimationSequencer, ejecutar inmediatamente
-        if (animationSequencer == null)
+
+        // Play skill animation directly (skills don't use QTE system)
+        if (playerCharacter?.Animator != null && skill != null)
         {
-            Debug.Log($"No AnimationSequencer - executing skill {skill.skillName} immediately");
-            ExecuteSkillDamage(skill, target);
-            OnActionComplete?.Invoke();
-            return;
+            playerCharacter.Animator.Play(skill.animationStateName);
+            Debug.Log($"Playing skill animation: {skill.animationStateName}");
         }
-        
-        // Con AnimationSequencer (código original cuando esté disponible)
-        // animationSequencer.PlaySkillSequence(
-        //     skill,
-        //     () => ExecuteSkillDamage(skill, target),
-        //     () => OnActionComplete?.Invoke()
-        // );
-        
-        // Por ahora, ejecutar inmediatamente también
+
+        // Execute skill damage and effects
         ExecuteSkillDamage(skill, target);
         OnActionComplete?.Invoke();
 
@@ -155,14 +157,14 @@ public class PlayerBattleController : MonoBehaviour
             Debug.LogError("Light attack data is null!");
             return;
         }
-        
+
         // Consume stamina
         playerCharacter.StaminaManager.ConsumeStamina(lightAttackData.staminaCost);
-        
+
         // Calculate and apply damage
         float damage = lightAttackData.baseDamage;
         target.TakeDamage(damage);
-        
+
         Debug.Log($"Player deals {damage} damage to {target.name}");
     }
 
@@ -176,24 +178,24 @@ public class PlayerBattleController : MonoBehaviour
             Debug.LogError("Skill data is null!");
             return;
         }
-        
+
         // Consume stamina
         playerCharacter.StaminaManager.ConsumeStamina(skill.staminaCost);
-        
+
         // Calculate and apply damage - usar 'damageAmount' en lugar de 'baseDamage'
         float damage = skill.damageAmount; // <- CAMBIO AQUÍ
         target.TakeDamage(damage);
-        
+
         // Si la habilidad cura al jugador, aplicar curación
         if (skill.healsPlayer && skill.healAmount > 0f)
         {
             playerCharacter.Heal(skill.healAmount);
             Debug.Log($"Player heals for {skill.healAmount} HP");
         }
-        
+
         Debug.Log($"Player uses {skill.skillName} dealing {damage} damage to {target.name}");
     }
-    
+
     /// <summary>
     /// Check if player can perform an action
     /// </summary>
@@ -202,9 +204,9 @@ public class PlayerBattleController : MonoBehaviour
         switch (actionType)
         {
             case ActionType.LightAttack:
-                return lightAttackData != null && 
+                return lightAttackData != null &&
                        playerCharacter.StaminaManager.HasEnoughStamina(lightAttackData.staminaCost);
-            
+
             case ActionType.Skill:
                 // Check if any skill is available
                 foreach (var skill in availableSkills)
@@ -213,7 +215,7 @@ public class PlayerBattleController : MonoBehaviour
                         return true;
                 }
                 return false;
-            
+
             default:
                 return false;
         }
@@ -239,7 +241,7 @@ public class PlayerBattleController : MonoBehaviour
         }
     }
 
-    
+
     /// <summary>
     /// Get available skills for UI generation
     /// </summary>
@@ -263,25 +265,61 @@ public class PlayerBattleController : MonoBehaviour
     {
         playerCharacter.ResetForBattle();
     }
-    
-    public void ExecuteCounterAttackOnEnemy(BattleCharacter enemy)
+
+    /// <summary>
+    /// Play parry animation based on timing quality
+    /// </summary>
+    public void PlayParryAnimation(bool wasPerfect)
     {
-        if (enemy == null || !enemy.IsAlive) return;
-        
-        Debug.Log("Player executing counter-attack!");
-        
-        // Ejecutar animación de contrataque si hay animator
-        Animator animator = GetComponent<Animator>();
-        if (animator != null)
+        if (playerCharacter?.Animator == null)
         {
-            animator.SetTrigger("ParryHit"); // Trigger para la animación
+            Debug.LogWarning("Player animator is null, cannot play parry animation");
+            return;
         }
-        
-        // Aplicar daño del contrataque
-        float counterDamage = 30f; // Ajusta este valor
-        enemy.TakeDamage(counterDamage);
-        
-        Debug.Log($"Counter-attack dealt {counterDamage} damage!");
+
+        string animationToPlay = wasPerfect ? perfectParryAnimationName : parryAnimationName;
+        playerCharacter.Animator.Play(animationToPlay);
+
+        Debug.Log($"Playing player parry animation: {animationToPlay}");
+    }
+
+    /// <summary>
+    /// Execute counter-attack after successful parry
+    /// </summary>
+    public void ExecuteCounterAttackOnEnemy(BattleCharacter target)
+    {
+        if (lightAttackData == null)
+        {
+            Debug.LogError("Cannot execute counter-attack - light attack data is null!");
+            return;
+        }
+
+        if (target == null || !target.IsAlive)
+        {
+            Debug.LogWarning("Cannot execute counter-attack - target is null or dead!");
+            return;
+        }
+
+        Debug.Log("Executing counter-attack!");
+
+        // Play attack animation
+        if (playerCharacter?.Animator != null)
+        {
+            playerCharacter.Animator.Play(lightAttackData.animationStateName);
+            Debug.Log($"Playing counter-attack animation: {lightAttackData.animationStateName}");
+        }
+
+        // Apply counter-attack damage (can be boosted or use normal damage)
+        float damage = lightAttackData.baseDamage * 1.5f; // 50% bonus damage on counter
+        target.TakeDamage(damage);
+
+        Debug.Log($"Counter-attack deals {damage} damage to {target.name}!");
+
+        // Haptic feedback
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnHeavyAttack(); // Use heavy attack vibration for counter
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System;
 using System.Collections;
 
@@ -9,7 +10,7 @@ public class QTEManager : MonoBehaviour
 {
     [Header("QTE Settings")]
     [SerializeField] private float qteWindowDuration = 0.5f;
-    [SerializeField] private KeyCode qteInputKey = KeyCode.Space;
+    [SerializeField] private InputActionReference qteInputAction;
     
     [Header("Timing")]
     [Tooltip("Time window before and after perfect timing")]
@@ -25,12 +26,29 @@ public class QTEManager : MonoBehaviour
     
     public bool IsQTEActive => isQTEActive;
     
+    private void OnEnable()
+    {
+        if (qteInputAction != null)
+        {
+            qteInputAction.action.Enable();
+        }
+    }
+    
+    private void OnDisable()
+    {
+        if (qteInputAction != null)
+        {
+            qteInputAction.action.Disable();
+        }
+    }
+    
     private void Update()
     {
         if (!isQTEActive) return;
         
         // Check for input
-        if (Input.GetKeyDown(qteInputKey) && !qteCompleted)
+        if (qteInputAction != null && qteInputAction.action != null && 
+            qteInputAction.action.WasPressedThisFrame() && !qteCompleted)
         {
             CheckQTETiming();
         }
@@ -58,7 +76,9 @@ public class QTEManager : MonoBehaviour
         qteCompleted = false;
         
         OnQTEWindowStart?.Invoke(true);
-        Debug.Log($"QTE Window Started! Press {qteInputKey}");
+        
+        string actionName = qteInputAction != null ? qteInputAction.action.name : "QTE Button";
+        Debug.Log($"QTE Window Started! Press {actionName}");
     }
     
     /// <summary>

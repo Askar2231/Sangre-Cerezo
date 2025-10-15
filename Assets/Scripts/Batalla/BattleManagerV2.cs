@@ -13,38 +13,33 @@ public class BattleManagerV2 : MonoBehaviour
     [Header("Battle Participants")]
     [SerializeField] private PlayerBattleController playerController;
     [SerializeField] private EnemyBattleController enemyController;
-    
+
     [Header("Systems")]
-    // [SerializeField] private AnimationSequencer playerAnimationSequencer; // COMENTADO - Usando delays temporales
+    [SerializeField] private AnimationSequencer playerAnimationSequencer;
     [SerializeField] private QTEManager qteManager;
     [SerializeField] private ParrySystem parrySystem;
-    
+
     [Header("Player Movement")]
     [SerializeField] private MovimientoV2 playerMovement;
-    
+
     [Header("UI (Optional)")]
     [SerializeField] private GameObject actionSelectionUI;
-    
+
     [Header("Camera")]
     [SerializeField] private ThirdPersonJRPGCamera battleCamera;
-    
-    [Header("Temporary Animation Settings")]
-    [SerializeField] private float playerAttackDelay = 1.0f; // Tiempo simulado de animación de ataque
-    [SerializeField] private float playerSkillDelay = 1.2f;  // Tiempo simulado de animación de skill
-    [SerializeField] private float enemyAttackDelay = 1.0f;  // Tiempo simulado de animación enemiga
-    
+
     // Core Systems
     private TurnManager turnManager;
     private BattleResult battleResult = BattleResult.None;
-    
+
     // Events for UI
     public event Action<BattleState> OnBattleStateChanged;
     public event Action<BattleResult> OnBattleEnded;
-    
+
     // Properties
     public BattleState CurrentState => turnManager?.CurrentBattleState ?? BattleState.BattleStart;
     public bool IsBattleActive => battleResult == BattleResult.None;
-    
+
     [Header("Parry System")]
     [SerializeField] private GameObject parryIndicatorPrefab;
     [SerializeField] private float parryIndicatorHeight = 1.5f; // Nueva variable configurable
@@ -60,12 +55,12 @@ public class BattleManagerV2 : MonoBehaviour
 
     [Header("UI Turn Display")]
     [SerializeField] private TextMeshProUGUI turnDisplayText; // AGREGAR ESTA LÍNEA
-    
+
     private void Awake()
     {
         ValidateReferences();
     }
-    
+
     // MODIFICAR el método Start() para que NO inicie automáticamente:
     private void Start()
     {
@@ -74,65 +69,73 @@ public class BattleManagerV2 : MonoBehaviour
         {
             parrySystem.OnParryWindowActive += HandleParryWindowStateChanged;
             parrySystem.OnParrySuccess += HandleParrySuccess;
+            parrySystem.OnParrySuccessWithTiming += HandleParrySuccessWithTiming;
             parrySystem.OnParryFail += HandleParryFail;
         }
     }
-    
+
     /// <summary>
     /// Initialize battle systems
     /// </summary>
     private void InitializeBattle()
     {
         Debug.Log("=== BATTLE START ===");
-        
+
         // VERIFICAR que tengamos referencias válidas
         if (playerController == null)
         {
             Debug.LogError("PlayerBattleController is null! Cannot start battle.");
             return;
         }
-        
+
         if (enemyController == null)
         {
             Debug.LogError("EnemyBattleController is null! Cannot start battle.");
             return;
         }
-        
+
         // Disable player movement during battle
         DisablePlayerMovement();
-        
+
+        // Initialize AnimationSequencer with player animator
+        if (playerAnimationSequencer != null && playerController?.Character?.Animator != null)
+        {
+            playerAnimationSequencer.Initialize(playerController.Character.Animator, qteManager);
+            Debug.Log("AnimationSequencer initialized with player animator");
+        }
+
         // Initialize turn manager con referencias actualizadas
         turnManager = new TurnManager(
             playerController.Character,
             enemyController.Character
         );
-        
-        // Initialize controllers - pasar null para animationSequencer temporalmente
-        playerController.Initialize(null, qteManager);
+
+        // Initialize controllers with proper AnimationSequencer reference
+        playerController.Initialize(playerAnimationSequencer, qteManager);
         enemyController.Initialize(parrySystem);
-        
+
         // Reset characters
         playerController.ResetForBattle();
         enemyController.ResetForBattle();
-        
+
         // Subscribe to events (IMPORTANTE: limpiar eventos anteriores)
         UnsubscribeFromEvents(); // Limpiar primero
         SubscribeToEvents();     // Suscribir con nuevo enemigo
-        
+
         // Subscribe to state changes
         turnManager.OnBattleStateChanged += HandleBattleStateChanged;
         turnManager.OnPlayerTurnStateChanged += HandlePlayerTurnStateChanged;
         turnManager.OnEnemyTurnStateChanged += HandleEnemyTurnStateChanged;
-        
+
         // Actualizar UI inicial de vida
         UpdateHealthUI();
-        
+
         // Mostrar que la batalla está comenzando
         UpdateTurnDisplayUI("BATTLE START");
-        
+
         // RESETEAR resultado de batalla
         battleResult = BattleResult.None;
-        
+
         // Start battle
         turnManager.ChangeBattleState(BattleState.PlayerTurn);
     }
@@ -148,17 +151,17 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogWarning("Battle already in progress or finished!");
             return;
         }
-        
+
         // Solo buscar automáticamente si no se pasó un enemigo específico
         if (enemyController == null)
         {
             FindAndAssignNewEnemy();
         }
-        
+
         Debug.Log("Starting battle from external trigger...");
         InitializeBattle();
     }
-    
+
     // AGREGAR nuevo método público que recibe el enemigo específico:
     /// <summary>
     /// Inicia la batalla con un enemigo específico
@@ -171,21 +174,21 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogWarning($"Battle already in progress or finished! Current result: {battleResult}");
             return;
         }
-        
+
         // VALIDAR enemigo
         if (specificEnemy == null || specificEnemy.gameObject == null)
         {
             Debug.LogError("Specific enemy is null or destroyed! Cannot start battle.");
             return;
         }
-        
+
         // ASIGNAR el enemigo específico que activó el trigger
         enemyController = specificEnemy;
         Debug.Log($"Battle started with specific enemy: {enemyController.name}");
-        
+
         // FORZAR reset del resultado de batalla
         battleResult = BattleResult.None;
-        
+
         InitializeBattle();
     }
 
@@ -196,10 +199,10 @@ public class BattleManagerV2 : MonoBehaviour
     private void FindAndAssignNewEnemy()
     {
         Debug.Log("Searching for enemy automatically...");
-        
-        // Buscar EnemyBattleController en la escena
-        EnemyBattleController[] enemies = FindObjectsOfType<EnemyBattleController>();
-        
+
+        // Buscar EnemyBattleController en la escena (usando el nuevo método de Unity)
+        EnemyBattleController[] enemies = FindObjectsByType<EnemyBattleController>(FindObjectsSortMode.None);
+
         if (enemies.Length > 0)
         {
             // Tomar el primer enemigo encontrado
@@ -211,7 +214,7 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogError("No EnemyBattleController found in scene! Cannot start battle.");
         }
     }
-    
+
     /// <summary>
     /// Subscribe to all necessary events
     /// </summary>
@@ -220,36 +223,36 @@ public class BattleManagerV2 : MonoBehaviour
         // Player events
         playerController.OnActionComplete += HandlePlayerActionComplete;
         playerController.Character.OnDeath += HandlePlayerDeath;
-        
+
         // Enemy events
         enemyController.OnThinkingComplete += HandleEnemyThinkingComplete;
         enemyController.OnAttackComplete += HandleEnemyAttackComplete;
         enemyController.Character.OnDeath += HandleEnemyDeath;
     }
-    
+
     #region State Change Handlers
-    
+
     private void HandleBattleStateChanged(BattleState newState)
     {
         Debug.Log($">>> Battle State Changed: {newState}");
         OnBattleStateChanged?.Invoke(newState);
-        
+
         switch (newState)
         {
             case BattleState.PlayerTurn:
                 StartPlayerTurn();
                 break;
-            
+
             case BattleState.EnemyTurn:
                 StartEnemyTurn();
                 break;
-            
+
             case BattleState.BattleEnd:
                 EndBattle();
                 break;
         }
     }
-    
+
     private void HandlePlayerTurnStateChanged(PlayerTurnState newState)
     {
         switch (newState)
@@ -257,34 +260,34 @@ public class BattleManagerV2 : MonoBehaviour
             case PlayerTurnState.SelectingAction:
                 ShowActionSelectionUI();
                 break;
-            
+
             case PlayerTurnState.ExecutingAttack:
             case PlayerTurnState.ExecutingSkill:
                 HideActionSelectionUI();
                 break;
         }
     }
-    
+
     private void HandleEnemyTurnStateChanged(EnemyTurnState newState)
     {
         // Handle enemy turn state changes if needed
     }
-    
+
     #endregion
-    
+
     #region Player Turn
-    
+
     private void StartPlayerTurn()
     {
         Debug.Log("=== PLAYER TURN ===");
         playerController.Character.StaminaManager.RestoreToMax();
-    
+
         // Actualizar display de turno
         UpdateTurnDisplayUI("PLAYER TURN");
-    
+
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
-    
+
     /// <summary>
     /// Player chooses to attack
     /// </summary>
@@ -296,13 +299,13 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogWarning("Not enough stamina for attack!");
             return;
         }
-        
+
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
-        
-        // Ejecutar ataque con delay temporal (simulando animación)
-        StartCoroutine(ExecutePlayerAttackWithDelay());
+
+        // Execute attack (animation handled by PlayerBattleController)
+        playerController.ExecuteLightAttack(enemyController.Character);
     }
-    
+
     /// <summary>
     /// Player chooses to use a skill
     /// </summary>
@@ -314,165 +317,117 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogWarning("Not enough stamina for skill!");
             return;
         }
-        
+
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingSkill);
-        
-        // Ejecutar skill con delay temporal (simulando animación)
-        StartCoroutine(ExecutePlayerSkillWithDelay(skillIndex));
-    }
-    
-    /// <summary>
-    /// Simula la animación de ataque del jugador con delay
-    /// </summary>
-    private IEnumerator ExecutePlayerAttackWithDelay()
-    {
-        Debug.Log("Player attack animation started (simulated)");
-        
-        // Simular tiempo de animación
-        yield return new WaitForSeconds(playerAttackDelay);
-        
-        Debug.Log("Player attack animation complete, executing damage");
-        
-        // Ejecutar el daño real
-        playerController.ExecuteLightAttack(enemyController.Character);
-    }
-    
-    /// <summary>
-    /// Simula la animación de skill del jugador con delay
-    /// </summary>
-    private IEnumerator ExecutePlayerSkillWithDelay(int skillIndex)
-    {
-        Debug.Log($"Player skill {skillIndex} animation started (simulated)");
-        
-        // Simular tiempo de animación
-        yield return new WaitForSeconds(playerSkillDelay);
-        
-        Debug.Log($"Player skill {skillIndex} animation complete, executing damage");
-        
-        // Ejecutar el daño real
+
+        // Execute skill (animation handled by PlayerBattleController)
         playerController.ExecuteSkill(skillIndex, enemyController.Character);
     }
-    
+
     /// <summary>
     /// Player chooses to end turn
     /// </summary>
     public void PlayerEndTurn()
     {
         if (CurrentState != BattleState.PlayerTurn) return;
-        
+
         Debug.Log("Player ends turn");
         turnManager.EndPlayerTurn();
     }
-    
+
     private void HandlePlayerActionComplete()
     {
         Debug.Log("Player action complete");
-        
+
         // Actualizar UI de vida después de la acción del jugador
         UpdateHealthUI();
-        
+
         // Check if enemy is dead
         if (!enemyController.Character.IsAlive)
         {
             return; // Death handler will end battle
         }
-        
+
         // Return to action selection or wait for player to end turn
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
-    
+
     #endregion
-    
+
     #region Enemy Turn
-    
+
     private void StartEnemyTurn()
     {
         Debug.Log("=== ENEMY TURN ===");
         enemyController.Character.StaminaManager.RestoreToMax();
-        
+
         // Actualizar display de turno
         UpdateTurnDisplayUI("ENEMY TURN");
-        
+
         turnManager.ChangeEnemyTurnState(EnemyTurnState.Thinking);
         enemyController.ExecuteThinking();
     }
-    
+
     private void HandleEnemyThinkingComplete()
     {
         Debug.Log("Enemy thinking complete");
         turnManager.ChangeEnemyTurnState(EnemyTurnState.Attacking);
-        
-        // Ejecutar ataque enemigo con delay temporal
-        StartCoroutine(ExecuteEnemyAttackWithDelay());
-    }
-    
-    /// <summary>
-    /// Simula la animación de ataque del enemigo con delay
-    /// </summary>
-    private IEnumerator ExecuteEnemyAttackWithDelay()
-    {
-        Debug.Log("Enemy attack animation started (simulated)");
-        
-        // Simular tiempo de animación
-        yield return new WaitForSeconds(enemyAttackDelay);
-        
-        Debug.Log("Enemy attack animation complete, executing damage");
-        
-        // Ejecutar el daño real
+
+        // Execute enemy attack (animation handled by EnemyBattleController)
         enemyController.ExecuteAttack(playerController.Character);
     }
-    
+
     private void HandleEnemyAttackComplete()
     {
         Debug.Log("Enemy attack complete");
-        
+
         // Actualizar UI de vida después del ataque enemigo
         UpdateHealthUI();
-        
+
         // Check if player is dead
         if (!playerController.Character.IsAlive)
         {
             return; // Death handler will end battle
         }
-        
+
         // Delay antes de terminar el turno enemigo
         StartCoroutine(EndEnemyTurnWithDelay(0.8f)); // 800ms delay
     }
-    
+
     /// <summary>
     /// Termina el turno enemigo después de un delay
     /// </summary>
     private IEnumerator EndEnemyTurnWithDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        
+
         Debug.Log("Enemy turn ending after delay");
         turnManager.EndEnemyTurn();
     }
-    
+
     #endregion
-    
+
     #region Battle End
-    
+
     private void HandlePlayerDeath()
     {
         Debug.Log("Player has been defeated!");
         battleResult = BattleResult.PlayerDefeated;
         turnManager.ChangeBattleState(BattleState.BattleEnd);
     }
-    
+
     // MODIFICAR el método HandleEnemyDeath():
     private void HandleEnemyDeath()
     {
         Debug.Log("Enemy has been defeated!");
         battleResult = BattleResult.PlayerVictory;
-        
+
         // NO destruir aquí, dejar que el BattleTrigger lo maneje
         // StartCoroutine(DestroyEnemyAfterDelay(1.5f)); // COMENTAR ESTA LÍNEA
-        
+
         turnManager.ChangeBattleState(BattleState.BattleEnd);
     }
-    
+
     // AGREGAR nueva corrutina para destruir enemigo:
     /// <summary>
     /// Destruye el enemigo después de un delay para permitir efectos visuales
@@ -480,34 +435,34 @@ public class BattleManagerV2 : MonoBehaviour
     private IEnumerator DestroyEnemyAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        
+
         if (enemyController != null && enemyController.gameObject != null)
         {
             Debug.Log($"Destroying defeated enemy: {enemyController.name}");
             Destroy(enemyController.gameObject);
-            
+
             // LIMPIAR referencias para permitir nueva batalla
             enemyController = null;
             turnManager = null;
-            
+
             Debug.Log("Enemy references cleaned for next battle");
         }
     }
-    
+
     private void EndBattle()
     {
         Debug.Log($"=== BATTLE END: {battleResult} ===");
-        
+
         // Mostrar resultado de la batalla
         string resultText = battleResult == BattleResult.PlayerVictory ? "VICTORY!" : "DEFEAT!";
         UpdateTurnDisplayUI(resultText);
-        
+
         // INVOCAR EVENTO ANTES DE LIMPIAR
         OnBattleEnded?.Invoke(battleResult);
-        
+
         // Re-enable player movement after battle
         EnablePlayerMovement();
-        
+
         // LIMPIAR TODO EL ESTADO COMPLETAMENTE
         CleanupBattleState();
     }
@@ -520,25 +475,25 @@ public class BattleManagerV2 : MonoBehaviour
     {
         // Cleanup events
         UnsubscribeFromEvents();
-        
+
         // Limpiar referencias de batalla
         enemyController = null;
         turnManager = null;
         battleResult = BattleResult.None;
-        
+
         // Limpiar parry indicator
         DestroyParryIndicator();
-        
+
         // Limpiar UI
         HideActionSelectionUI();
-        
+
         Debug.Log("Battle state completely cleaned for next battle");
     }
-    
+
     #endregion
-    
+
     #region UI Helpers
-    
+
     private void ShowActionSelectionUI()
     {
         if (actionSelectionUI != null)
@@ -546,7 +501,7 @@ public class BattleManagerV2 : MonoBehaviour
             actionSelectionUI.SetActive(true);
         }
     }
-    
+
     private void HideActionSelectionUI()
     {
         if (actionSelectionUI != null)
@@ -554,7 +509,7 @@ public class BattleManagerV2 : MonoBehaviour
             actionSelectionUI.SetActive(false);
         }
     }
-    
+
     /// <summary>
     /// Updates player health display
     /// </summary>
@@ -614,11 +569,11 @@ public class BattleManagerV2 : MonoBehaviour
         UpdateEnemyHealthUI();
         UpdatePlayerStaminaUI(); // AGREGAR ESTA LÍNEA
     }
-    
+
     #endregion
-    
+
     #region Cleanup
-    
+
     private void UnsubscribeFromEvents()
     {
         if (playerController != null)
@@ -627,7 +582,7 @@ public class BattleManagerV2 : MonoBehaviour
             if (playerController.Character != null)
                 playerController.Character.OnDeath -= HandlePlayerDeath;
         }
-        
+
         if (enemyController != null)
         {
             enemyController.OnThinkingComplete -= HandleEnemyThinkingComplete;
@@ -635,30 +590,31 @@ public class BattleManagerV2 : MonoBehaviour
             if (enemyController.Character != null)
                 enemyController.Character.OnDeath -= HandleEnemyDeath;
         }
-        
+
         if (turnManager != null)
         {
             turnManager.OnBattleStateChanged -= HandleBattleStateChanged;
             turnManager.OnPlayerTurnStateChanged -= HandlePlayerTurnStateChanged;
             turnManager.OnEnemyTurnStateChanged -= HandleEnemyTurnStateChanged;
         }
-        
+
         // Desuscribirse de eventos del ParrySystem
         if (parrySystem != null)
         {
             parrySystem.OnParryWindowActive -= HandleParryWindowStateChanged;
             parrySystem.OnParrySuccess -= HandleParrySuccess;
+            parrySystem.OnParrySuccessWithTiming -= HandleParrySuccessWithTiming;
             parrySystem.OnParryFail -= HandleParryFail;
         }
     }
-    
+
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
     }
-    
+
     #region Movement Control
-    
+
     /// <summary>
     /// Disable player movement when entering battle
     /// </summary>
@@ -670,7 +626,7 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.Log("Player movement disabled for battle");
         }
     }
-    
+
     /// <summary>
     /// Re-enable player movement when exiting battle
     /// </summary>
@@ -682,9 +638,9 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.Log("Player movement re-enabled after battle");
         }
     }
-    
+
     #endregion
-    
+
     #region Parry System
 
     /// <summary>
@@ -713,32 +669,51 @@ public class BattleManagerV2 : MonoBehaviour
         // Ejecutar contrataque automático del jugador
         StartCoroutine(ExecuteCounterAttack());
     }
-    
-   private IEnumerator ExecuteCounterAttack()
+
+    private IEnumerator ExecuteCounterAttack()
     {
         // Pequeño delay para la animación de parry
         yield return new WaitForSeconds(0.2f);
-        
+
         Debug.Log("Counter-attack hitting enemy!");
-        
+
         // El jugador ejecuta el contrataque
         if (enemyController != null && enemyController.Character != null && enemyController.Character.IsAlive)
         {
             // Ejecutar contrataque con animación
             playerController.ExecuteCounterAttackOnEnemy(enemyController.Character);
-            
+
             // Restaurar stamina del jugador
             if (playerController != null && playerController.Character != null)
             {
                 playerController.Character.StaminaManager.RestoreToMax();
             }
-            
+
             // Actualizar UI
             UpdateHealthUI();
         }
-        
+
         // Pequeño delay antes de continuar
         yield return new WaitForSeconds(0.5f);
+    }
+
+    /// <summary>
+    /// Handle parry success with timing information
+    /// </summary>
+    private void HandleParrySuccessWithTiming(bool wasPerfect)
+    {
+        // Delegate to PlayerBattleController to play parry animation
+        if (playerController != null)
+        {
+            playerController.PlayParryAnimation(wasPerfect);
+        }
+
+        // Play enemy stagger animation
+        if (enemyController?.Character?.Animator != null)
+        {
+            enemyController.Character.Animator.Play("Staggered");
+            Debug.Log("Playing enemy stagger animation");
+        }
     }
 
     /// <summary>
@@ -754,25 +729,25 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void CreateParryIndicator()
     {
-        if (parryIndicatorPrefab == null || enemyController == null || enemyController.gameObject == null) 
+        if (parryIndicatorPrefab == null || enemyController == null || enemyController.gameObject == null)
             return;
-        
+
         if (activeParryIndicator != null)
         {
             Destroy(activeParryIndicator);
         }
-        
+
         Debug.Log("Parry window opened! Creating indicator");
-        
+
         // Usar la altura configurable desde el Inspector
         Vector3 spawnPos = enemyController.transform.position + Vector3.up * parryIndicatorHeight;
         Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
 
         activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyController.transform);
-        
+
         // Usar la escala configurable desde el Inspector
         activeParryIndicator.transform.localScale = Vector3.one * parryIndicatorScale;
-        
+
         // Usar la altura configurable para el FollowTarget también
         activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * parryIndicatorHeight);
     }
@@ -791,38 +766,37 @@ public class BattleManagerV2 : MonoBehaviour
     }
 
     #endregion
-    
+
     #region Validation
-    
+
     private void ValidateReferences()
     {
         if (playerController == null)
             Debug.LogError("PlayerBattleController not assigned!");
-        
+
         if (enemyController == null)
             Debug.LogError("EnemyBattleController not assigned!");
-        
-        // AnimationSequencer comentado temporalmente
-        // if (playerAnimationSequencer == null)
-        //     Debug.LogError("AnimationSequencer not assigned!");
-        
+
+        if (playerAnimationSequencer == null)
+            Debug.LogError("AnimationSequencer not assigned!");
+
         if (qteManager == null)
             Debug.LogError("QTEManager not assigned!");
-        
+
         if (parrySystem == null)
             Debug.LogError("ParrySystem not assigned!");
-        
+
         if (playerMovement == null)
             Debug.LogWarning("PlayerMovement (MovimientoV2) not assigned! Movement will not be disabled during battle.");
-        
+
         if (parryIndicatorPrefab == null)
             Debug.LogWarning("ParryIndicatorPrefab not assigned! Parry indicators will not show.");
     }
-    
+
     #endregion
-    
+
     #region Public API for Testing
-    
+
     /// <summary>
     /// For debugging/testing - manually trigger state changes
     /// </summary>
@@ -830,7 +804,7 @@ public class BattleManagerV2 : MonoBehaviour
     {
         InitializeBattle();
     }
-    
+
     /// <summary>
     /// Get current stamina info for UI
     /// </summary>
@@ -841,7 +815,7 @@ public class BattleManagerV2 : MonoBehaviour
             playerController.Character.StaminaManager.MaxStamina
         );
     }
-    
+
     /// <summary>
     /// Resetea completamente el BattleManager (llamado desde BattleTrigger)
     /// </summary>
@@ -850,8 +824,8 @@ public class BattleManagerV2 : MonoBehaviour
         CleanupBattleState();
         Debug.Log("BattleManager force reset completed");
     }
-    
+
     #endregion
-    
+
     #endregion
 }
