@@ -18,6 +18,7 @@ public class QuestManager : MonoBehaviour
     private RobberyQuestState currentQuestState = RobberyQuestState.NotStarted;
     private GameObject spawnedThief; 
     private bool callbacksRegistered = false;
+    private BattleManagerV2 activeBattleManager;
     
     public static event Action<RobberyQuestState> OnQuestStateChanged;
 
@@ -35,6 +36,12 @@ public class QuestManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Unsubscribe from battle events if still subscribed
+        if (activeBattleManager != null)
+        {
+            activeBattleManager.OnBattleEnded -= HandleThiefBattleEnded;
+        }
+        
         UnregisterChoiceCallbacks();
     }
 
@@ -125,6 +132,18 @@ public class QuestManager : MonoBehaviour
             Debug.Log("<color=cyan>ThiefProximityDetector añadido automáticamente al ladrón.</color>");
         }
         
+        // Find and subscribe to the BattleManagerV2 on the spawned thief
+        activeBattleManager = spawnedThief.GetComponentInChildren<BattleManagerV2>();
+        if (activeBattleManager != null)
+        {
+            activeBattleManager.OnBattleEnded += HandleThiefBattleEnded;
+            Debug.Log("<color=green>Subscribed to thief battle events</color>");
+        }
+        else
+        {
+            Debug.LogError("BattleManagerV2 not found on spawned thief!");
+        }
+        
         Debug.Log("¡Ladrón aparecido! Acércate para iniciar el combate.");
     }
     else
@@ -173,6 +192,25 @@ public class QuestManager : MonoBehaviour
             Debug.Log("Combate con el ladrón terminado. Derrota.");
             UpdateQuestState(RobberyQuestState.NotStarted);
         }
+    }
+
+    /// <summary>
+    /// Handles the battle ended event from BattleManagerV2
+    /// </summary>
+    private void HandleThiefBattleEnded(BattleResult result)
+    {
+        Debug.Log($"<color=cyan>Thief battle ended with result: {result}</color>");
+        
+        // Unsubscribe from event
+        if (activeBattleManager != null)
+        {
+            activeBattleManager.OnBattleEnded -= HandleThiefBattleEnded;
+            activeBattleManager = null;
+        }
+        
+        // Call existing combat end logic
+        bool playerWon = (result == BattleResult.PlayerVictory);
+        OnThiefCombatEnd(playerWon);
     }
 
     public void PlayerForgivenThief()

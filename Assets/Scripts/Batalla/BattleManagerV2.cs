@@ -85,10 +85,23 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("=== BATTLE START ===");
         
+        // VERIFICAR que tengamos referencias válidas
+        if (playerController == null)
+        {
+            Debug.LogError("PlayerBattleController is null! Cannot start battle.");
+            return;
+        }
+        
+        if (enemyController == null)
+        {
+            Debug.LogError("EnemyBattleController is null! Cannot start battle.");
+            return;
+        }
+        
         // Disable player movement during battle
         DisablePlayerMovement();
         
-        // Initialize turn manager
+        // Initialize turn manager con referencias actualizadas
         turnManager = new TurnManager(
             playerController.Character,
             enemyController.Character
@@ -102,8 +115,9 @@ public class BattleManagerV2 : MonoBehaviour
         playerController.ResetForBattle();
         enemyController.ResetForBattle();
         
-        // Subscribe to events
-        SubscribeToEvents();
+        // Subscribe to events (IMPORTANTE: limpiar eventos anteriores)
+        UnsubscribeFromEvents(); // Limpiar primero
+        SubscribeToEvents();     // Suscribir con nuevo enemigo
         
         // Subscribe to state changes
         turnManager.OnBattleStateChanged += HandleBattleStateChanged;
@@ -116,8 +130,10 @@ public class BattleManagerV2 : MonoBehaviour
         // Mostrar que la batalla está comenzando
         UpdateTurnDisplayUI("BATTLE START");
         
-        // Start battle
+        // RESETEAR resultado de batalla
         battleResult = BattleResult.None;
+        
+        // Start battle
         turnManager.ChangeBattleState(BattleState.PlayerTurn);
     }
 
@@ -133,8 +149,67 @@ public class BattleManagerV2 : MonoBehaviour
             return;
         }
         
+        // Solo buscar automáticamente si no se pasó un enemigo específico
+        if (enemyController == null)
+        {
+            FindAndAssignNewEnemy();
+        }
+        
         Debug.Log("Starting battle from external trigger...");
         InitializeBattle();
+    }
+    
+    // AGREGAR nuevo método público que recibe el enemigo específico:
+    /// <summary>
+    /// Inicia la batalla con un enemigo específico
+    /// </summary>
+    public void StartBattleWithEnemy(EnemyBattleController specificEnemy)
+    {
+        // VERIFICAR estado actual
+        if (battleResult != BattleResult.None)
+        {
+            Debug.LogWarning($"Battle already in progress or finished! Current result: {battleResult}");
+            return;
+        }
+        
+        // VALIDAR enemigo
+        if (specificEnemy == null || specificEnemy.gameObject == null)
+        {
+            Debug.LogError("Specific enemy is null or destroyed! Cannot start battle.");
+            return;
+        }
+        
+        // ASIGNAR el enemigo específico que activó el trigger
+        enemyController = specificEnemy;
+        Debug.Log($"Battle started with specific enemy: {enemyController.name}");
+        
+        // FORZAR reset del resultado de batalla
+        battleResult = BattleResult.None;
+        
+        InitializeBattle();
+    }
+
+    // El método FindAndAssignNewEnemy() se mantiene como respaldo:
+    /// <summary>
+    /// Busca y asigna un nuevo enemigo si el actual está destruido o es null
+    /// </summary>
+    private void FindAndAssignNewEnemy()
+    {
+        Debug.Log("Searching for enemy automatically...");
+        
+        // Buscar EnemyBattleController en la escena
+        EnemyBattleController[] enemies = FindObjectsOfType<EnemyBattleController>();
+        
+        if (enemies.Length > 0)
+        {
+            // Tomar el primer enemigo encontrado
+            enemyController = enemies[0];
+            Debug.Log($"Enemy auto-assigned: {enemyController.name}");
+        }
+        else
+        {
+            Debug.LogError("No EnemyBattleController found in scene! Cannot start battle.");
+        }
     }
     
     /// <summary>
@@ -392,8 +467,8 @@ public class BattleManagerV2 : MonoBehaviour
         Debug.Log("Enemy has been defeated!");
         battleResult = BattleResult.PlayerVictory;
         
-        // Destruir el GameObject del enemigo después de un breve delay
-        StartCoroutine(DestroyEnemyAfterDelay(1.5f));
+        // NO destruir aquí, dejar que el BattleTrigger lo maneje
+        // StartCoroutine(DestroyEnemyAfterDelay(1.5f)); // COMENTAR ESTA LÍNEA
         
         turnManager.ChangeBattleState(BattleState.BattleEnd);
     }
@@ -408,9 +483,14 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (enemyController != null && enemyController.gameObject != null)
         {
-            Debug.Log("Destroying defeated enemy...");
+            Debug.Log($"Destroying defeated enemy: {enemyController.name}");
             Destroy(enemyController.gameObject);
-            enemyController = null; // Limpiar referencia
+            
+            // LIMPIAR referencias para permitir nueva batalla
+            enemyController = null;
+            turnManager = null;
+            
+            Debug.Log("Enemy references cleaned for next battle");
         }
     }
     
@@ -422,13 +502,37 @@ public class BattleManagerV2 : MonoBehaviour
         string resultText = battleResult == BattleResult.PlayerVictory ? "VICTORY!" : "DEFEAT!";
         UpdateTurnDisplayUI(resultText);
         
+        // INVOCAR EVENTO ANTES DE LIMPIAR
         OnBattleEnded?.Invoke(battleResult);
         
         // Re-enable player movement after battle
         EnablePlayerMovement();
         
-        // Cleanup
+        // LIMPIAR TODO EL ESTADO COMPLETAMENTE
+        CleanupBattleState();
+    }
+
+    // AGREGAR método para limpiar completamente el estado:
+    /// <summary>
+    /// Limpia completamente el estado de batalla para permitir nuevas batallas
+    /// </summary>
+    private void CleanupBattleState()
+    {
+        // Cleanup events
         UnsubscribeFromEvents();
+        
+        // Limpiar referencias de batalla
+        enemyController = null;
+        turnManager = null;
+        battleResult = BattleResult.None;
+        
+        // Limpiar parry indicator
+        DestroyParryIndicator();
+        
+        // Limpiar UI
+        HideActionSelectionUI();
+        
+        Debug.Log("Battle state completely cleaned for next battle");
     }
     
     #endregion
@@ -736,6 +840,15 @@ public class BattleManagerV2 : MonoBehaviour
             playerController.Character.StaminaManager.CurrentStamina,
             playerController.Character.StaminaManager.MaxStamina
         );
+    }
+    
+    /// <summary>
+    /// Resetea completamente el BattleManager (llamado desde BattleTrigger)
+    /// </summary>
+    public void ForceReset()
+    {
+        CleanupBattleState();
+        Debug.Log("BattleManager force reset completed");
     }
     
     #endregion
