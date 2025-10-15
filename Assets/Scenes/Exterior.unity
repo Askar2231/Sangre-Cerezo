@@ -12635,6 +12635,18 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
       value: PlayerEndTurn
       objectReference: {fileID: 0}
+    - target: {fileID: 9209462995863783817, guid: 4c99cfc413905774db6a5ca824ffd35a, type: 3}
+      propertyPath: m_UiScaleMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9209462995863783817, guid: 4c99cfc413905774db6a5ca824ffd35a, type: 3}
+      propertyPath: m_ReferenceResolution.x
+      value: 1920
+      objectReference: {fileID: 0}
+    - target: {fileID: 9209462995863783817, guid: 4c99cfc413905774db6a5ca824ffd35a, type: 3}
+      propertyPath: m_ReferenceResolution.y
+      value: 1080
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
