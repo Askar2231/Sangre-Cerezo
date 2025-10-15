@@ -14,6 +14,16 @@ public class TransicionesAnim : MonoBehaviour
         if (Input.GetKey("w"))
         {
             anim.SetBool("semueve", true);
+
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKeyDown("w"))
+            {
+                anim.SetBool("corre", true);
+
+            }
+            else
+            {
+                anim.SetBool("corre", false);
+            }
         }
         else if (Input.GetKey("s"))
         {
@@ -27,15 +37,10 @@ public class TransicionesAnim : MonoBehaviour
         {
             anim.SetBool("semueve", true);
         }
-        else if (Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            anim.SetBool("corre", true);
-            Debug.Log("se esta oprimientdo");
-        }
         else
         {
             anim.SetBool("semueve", false);
-            anim.SetBool("corre", false);
+            
         }
     }
 }
