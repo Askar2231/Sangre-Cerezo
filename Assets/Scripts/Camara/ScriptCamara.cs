@@ -4,41 +4,51 @@ using UnityEngine.InputSystem;
 public class ThirdPersonJRPGCamera : MonoBehaviour
 {
     [Header("Objetivo")]
-    public Transform target; // Player
-    public Vector3 offset = new Vector3(0, 1.2f, -2.5f); // REDUCIR de (0, 2f, -4f)
+    public Transform target;
+    public Vector3 offset = new Vector3(0, 1.2f, -2.5f);
 
     [Header("Rotación Orbital")]
     public float mouseXSens = 180f;
     public float mouseYSens = 120f;
+    public float controlXSens = 2000f;
+    public float controlYSens = 2000f;
     public float minPitch = -10f;
     public float maxPitch = 60f;
 
+    [Header("Sensibilidad del mando")]
+    [Tooltip("Multiplicador adicional para ajustar la sensación del joystick")]
+    [Range(0.1f, 5f)] public float controllerSensitivityMultiplier = 0.5f;
+    [Range(0f, 1f)] public float controllerSmoothing = 0.1f; // suavizado del movimiento del joystick
+
     [Header("Auto Follow")]
-    public float autoFollowDelay = 2f;   
-    public float autoFollowSpeed = 5f;   
+    public float autoFollowDelay = 2f;
+    public float autoFollowSpeed = 5f;
 
     [Header("Camera Settings")]
-    [SerializeField] private float followDistance = 2f;    // REDUCIR de 3f
-    [SerializeField] private float followHeight = 1f;      // REDUCIR de 1.5f  
-    [SerializeField] private float combatDistance = 1.5f;  // REDUCIR de 2f
-    [SerializeField] private float combatHeight = 0.8f;    // REDUCIR de 1f
+    [SerializeField] private float followDistance = 2f;
+    [SerializeField] private float followHeight = 1f;
+    [SerializeField] private float combatDistance = 1.5f;
+    [SerializeField] private float combatHeight = 0.8f;
 
     [Header("Combat Mode")]
-    [SerializeField] private Vector3 combatOffset = new Vector3(0.3f, 0.8f, -1.5f); // AJUSTAR para jugador pequeño
-    public float combatPitch = 15f; // Aumentar ligeramente de 10f para ver mejor
-    public float transitionSpeed = 3f; // Mantener
-    
+    [SerializeField] private Vector3 combatOffset = new Vector3(0.3f, 0.8f, -1.5f);
+    public float combatPitch = 15f;
+    public float transitionSpeed = 3f;
+
     [Header("Battle System")]
     public BattleManagerV2 battleManager;
-    public Transform enemy; // Referencia al enemigo para enfocar
+    public Transform enemy;
 
-    [Header("Input System")] // <-- AÑADE ESTA LÍNEA
+    [Header("Input System")]
     public InputActionReference lookAction;
 
     float yaw;
     float pitch;
     float lastInputTime;
     private bool inCombatMode = false;
+
+    // variables internas para suavizado
+    private Vector2 smoothLookInput;
 
     void Start()
     {
@@ -47,7 +57,6 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         Vector3 angles = transform.eulerAngles;
         yaw = angles.y;
         pitch = angles.x;
-        
         UpdateCursorState();
     }
 
@@ -68,17 +77,13 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         if (!target) return;
 
         bool inCombat = IsInCombat();
-        
-        // Activar modo combate si cambia el estado
         if (inCombat != inCombatMode)
         {
             inCombatMode = inCombat;
             if (inCombatMode)
-            {
                 EnterCombatMode();
-            }
         }
-        
+
         UpdateCursorState();
 
         if (inCombatMode)
@@ -87,20 +92,24 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
             return;
         }
 
-        // Entrada mouse (solo fuera de combate)
-        //float mouseX = Input.GetAxis("Mouse X");
-        //float mouseY = Input.GetAxis("Mouse Y");
-
         Vector2 lookInput = lookAction.action.ReadValue<Vector2>();
-
-        // Asignamos los componentes X e Y a las variables que el script ya usa
-        float mouseX = lookInput.x;
-        float mouseY = lookInput.y;
-
-        if (Mathf.Abs(mouseX) > 0.01f || Mathf.Abs(mouseY) > 0.01f)
+        if (lookInput.sqrMagnitude > 0.0001f)
         {
-            yaw += mouseX * mouseXSens * Time.deltaTime;
-            pitch -= mouseY * mouseYSens * Time.deltaTime;
+            // Detectar tipo de dispositivo
+            InputDevice device = lookAction.action.activeControl?.device;
+            bool isController = device is Gamepad;
+
+            float sensX = isController ? controlXSens * controllerSensitivityMultiplier : mouseXSens;
+            float sensY = isController ? controlYSens * controllerSensitivityMultiplier : mouseYSens;
+
+            // Suavizado (solo para mando)
+            if (isController && controllerSmoothing > 0)
+                smoothLookInput = Vector2.Lerp(smoothLookInput, lookInput, 1 - Mathf.Exp(-controllerSmoothing * 50f * Time.deltaTime));
+            else
+                smoothLookInput = lookInput;
+
+            yaw += smoothLookInput.x * sensX * Time.deltaTime;
+            pitch -= smoothLookInput.y * sensY * Time.deltaTime;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
             lastInputTime = Time.time;
@@ -116,70 +125,43 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         transform.rotation = rotation;
     }
 
-    /// <summary>
-    /// Configura la cámara para modo combate detrás del hombro
-    /// </summary>
     private void EnterCombatMode()
     {
         Debug.Log("Camera entering combat mode - behind shoulder position");
-        
-        // Si hay enemigo, enfocar hacia él
         if (enemy != null)
         {
             Vector3 directionToEnemy = (enemy.position - target.position).normalized;
             yaw = Mathf.Atan2(directionToEnemy.x, directionToEnemy.z) * Mathf.Rad2Deg;
         }
-        
-        // Ángulo fijo para ver al enemigo
         pitch = combatPitch;
     }
 
-    /// <summary>
-    /// Maneja la cámara durante el combate - posición fija detrás del hombro
-    /// </summary>
     private void HandleCombatCamera()
     {
-        // Posición fija detrás del hombro derecho
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
         Vector3 targetPosition = target.position + rotation * combatOffset;
-        
-        // Suave transición a la posición de combate
         transform.position = Vector3.Lerp(transform.position, targetPosition, transitionSpeed * Time.deltaTime);
         transform.rotation = Quaternion.Lerp(transform.rotation, rotation, transitionSpeed * Time.deltaTime);
     }
 
-    /// <summary>
-    /// Verifica si estamos en combate activo
-    /// </summary>
     private bool IsInCombat()
     {
-        if (battleManager == null) 
-        {
+        if (battleManager == null)
             return false;
-        }
-        
-        // AÑADIR debugging temporal
+
         BattleState currentState = battleManager.CurrentState;
         bool isActive = battleManager.IsBattleActive;
-        
         bool inCombat = isActive && (currentState == BattleState.PlayerTurn || currentState == BattleState.EnemyTurn);
-        
-        // DEBUG TEMPORAL - quitar después
-        if (Time.frameCount % 60 == 0) // cada 60 frames
-        {
+
+        if (Time.frameCount % 60 == 0)
             Debug.Log($"Camera Combat Check - State: {currentState}, Active: {isActive}, InCombat: {inCombat}");
-        }
-        
+
         return inCombat;
     }
 
-    /// <summary>
-    /// Actualiza el estado del cursor según el modo de combate
-    /// </summary>
     private void UpdateCursorState()
     {
         bool inCombat = IsInCombat();
-        
         if (inCombat)
         {
             if (Cursor.lockState != CursorLockMode.None)
@@ -200,5 +182,3 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         }
     }
 }
-
-
