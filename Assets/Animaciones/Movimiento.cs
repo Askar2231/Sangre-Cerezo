@@ -15,7 +15,7 @@ public class TransicionesAnim : MonoBehaviour
         {
             anim.SetBool("semueve", true);
 
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKeyDown("w"))
+            if (Input.GetKey(KeyCode.LeftShift) )
             {
                 anim.SetBool("corre", true);
 
