@@ -78,6 +78,12 @@ public class PlayerBattleController : MonoBehaviour
         // Por ahora, ejecutar inmediatamente también
         ExecuteAttackDamage(target);
         OnActionComplete?.Invoke();
+
+        
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnLightAttack();
+        }
     }
 
     /// <summary>
@@ -120,6 +126,23 @@ public class PlayerBattleController : MonoBehaviour
         // Por ahora, ejecutar inmediatamente también
         ExecuteSkillDamage(skill, target);
         OnActionComplete?.Invoke();
+
+        // Agregar estas 18 líneas
+        if (GamepadVibrationManager.Instance != null)
+        {
+            if (skill.damageAmount >= 30f)
+            {
+                GamepadVibrationManager.Instance.VibrateOnHeavyAttack();
+            }
+            else if (skill.healsPlayer)
+            {
+                GamepadVibrationManager.Instance.VibrateOnItemUse();
+            }
+            else
+            {
+                GamepadVibrationManager.Instance.VibrateOnLightAttack();
+            }
+        }
     }
 
     /// <summary>
@@ -232,13 +255,33 @@ public class PlayerBattleController : MonoBehaviour
     {
         return lightAttackData != null;
     }
-    
+
     /// <summary>
     /// Reset for new battle
     /// </summary>
     public void ResetForBattle()
     {
         playerCharacter.ResetForBattle();
+    }
+    
+    public void ExecuteCounterAttackOnEnemy(BattleCharacter enemy)
+    {
+        if (enemy == null || !enemy.IsAlive) return;
+        
+        Debug.Log("Player executing counter-attack!");
+        
+        // Ejecutar animación de contrataque si hay animator
+        Animator animator = GetComponent<Animator>();
+        if (animator != null)
+        {
+            animator.SetTrigger("ParryHit"); // Trigger para la animación
+        }
+        
+        // Aplicar daño del contrataque
+        float counterDamage = 30f; // Ajusta este valor
+        enemy.TakeDamage(counterDamage);
+        
+        Debug.Log($"Counter-attack dealt {counterDamage} damage!");
     }
 }
 

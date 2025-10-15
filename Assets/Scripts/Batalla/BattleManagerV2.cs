@@ -49,6 +49,8 @@ public class BattleManagerV2 : MonoBehaviour
     [SerializeField] private GameObject parryIndicatorPrefab;
     [SerializeField] private float parryIndicatorHeight = 1.5f; // Nueva variable configurable
     [SerializeField] private float parryIndicatorScale = 0.8f;  // Nueva variable configurable
+    [SerializeField] private float counterAttackDamage = 25f;
+    [SerializeField] private float parryStaminaReward = 30f;
     private GameObject activeParryIndicator;
 
     [Header("UI Health Display")]
@@ -602,7 +604,37 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandleParrySuccess()
     {
         DestroyParryIndicator();
-        Debug.Log("Parry successful!");
+        Debug.Log("Parry successful! Executing counter-attack!");
+
+        // Ejecutar contrataque automático del jugador
+        StartCoroutine(ExecuteCounterAttack());
+    }
+    
+   private IEnumerator ExecuteCounterAttack()
+    {
+        // Pequeño delay para la animación de parry
+        yield return new WaitForSeconds(0.2f);
+        
+        Debug.Log("Counter-attack hitting enemy!");
+        
+        // El jugador ejecuta el contrataque
+        if (enemyController != null && enemyController.Character != null && enemyController.Character.IsAlive)
+        {
+            // Ejecutar contrataque con animación
+            playerController.ExecuteCounterAttackOnEnemy(enemyController.Character);
+            
+            // Restaurar stamina del jugador
+            if (playerController != null && playerController.Character != null)
+            {
+                playerController.Character.StaminaManager.RestoreToMax();
+            }
+            
+            // Actualizar UI
+            UpdateHealthUI();
+        }
+        
+        // Pequeño delay antes de continuar
+        yield return new WaitForSeconds(0.5f);
     }
 
     /// <summary>
