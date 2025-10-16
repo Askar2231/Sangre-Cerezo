@@ -36,7 +36,7 @@ MonoBehaviour:
     m_StrikethroughThickness: 0
     m_TabWidth: 0
   m_Material: {fileID: 0}
-  spriteSheet: {fileID: 0}
+  spriteSheet: {fileID: 2800000, guid: 1eee86f537ea3a34299f07cc0559b148, type: 3}
   m_SpriteCharacterTable:
   - m_ElementType: 2
     m_Unicode: 65534
@@ -187,7 +187,7 @@ MonoBehaviour:
       m_HorizontalBearingY: 64
       m_HorizontalAdvance: 64
     m_GlyphRect:
-      m_X: 320
+      m_X: 316
       m_Y: 128
       m_Width: 64
       m_Height: 64

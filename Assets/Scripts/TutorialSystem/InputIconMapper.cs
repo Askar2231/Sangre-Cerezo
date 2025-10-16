@@ -28,53 +28,16 @@ public class InputIconMapper : MonoBehaviour
     }
     #endregion
 
-    [Header("Sprites de Teclado")]
-    [SerializeField] private Sprite keyboardMove;
-    [SerializeField] private Sprite keyboardRun;
-    [SerializeField] private Sprite keyboardInteract;
-    [SerializeField] private Sprite keyboardQTE;
-    [SerializeField] private Sprite keyboardParry;
-    [SerializeField] private Sprite keyboardConfirm;
-    [SerializeField] private Sprite keyboardCancel;
-    [SerializeField] private Sprite keyboardLightAttack;
-    [SerializeField] private Sprite keyboardHeavyAttack;
-    [SerializeField] private Sprite keyboardSkill1;
-    [SerializeField] private Sprite keyboardSkill2;
-    [SerializeField] private Sprite keyboardEndTurn;
-
-    [Header("Sprites de Xbox")]
-    [SerializeField] private Sprite xboxMove;
-    [SerializeField] private Sprite xboxRun;
-    [SerializeField] private Sprite xboxInteract;
-    [SerializeField] private Sprite xboxQTE;
-    [SerializeField] private Sprite xboxParry;
-    [SerializeField] private Sprite xboxConfirm;
-    [SerializeField] private Sprite xboxCancel;
-    [SerializeField] private Sprite xboxLightAttack;
-    [SerializeField] private Sprite xboxHeavyAttack;
-    [SerializeField] private Sprite xboxSkill1;
-    [SerializeField] private Sprite xboxSkill2;
-    [SerializeField] private Sprite xboxEndTurn;
-
-    [Header("Sprites de PlayStation")]
-    [SerializeField] private Sprite psMove;
-    [SerializeField] private Sprite psRun;
-    [SerializeField] private Sprite psInteract;
-    [SerializeField] private Sprite psQTE;
-    [SerializeField] private Sprite psParry;
-    [SerializeField] private Sprite psConfirm;
-    [SerializeField] private Sprite psCancel;
-    [SerializeField] private Sprite psLightAttack;
-    [SerializeField] private Sprite psHeavyAttack;
-    [SerializeField] private Sprite psSkill1;
-    [SerializeField] private Sprite psSkill2;
-    [SerializeField] private Sprite psEndTurn;
+    // Sprite mappings configuration
+    [Header("Sprite Name Mappings")]
+    [Tooltip("Map each input action to sprite names in your TMP Sprite Atlas")]
+    [SerializeField] private List<InputActionSpriteMap> spriteNameMappings = new List<InputActionSpriteMap>();
 
     [Header("Configuración")]
     [SerializeField] private bool debugMode = false;
 
     private InputDeviceType currentDeviceType = InputDeviceType.Keyboard;
-    private Dictionary<InputAction, Sprite> currentIconSet;
+    private Dictionary<InputAction, string> currentSpriteNameSet;
 
     public delegate void DeviceChangedHandler(InputDeviceType newDevice);
     public event DeviceChangedHandler OnDeviceChanged;
@@ -110,7 +73,14 @@ public class InputIconMapper : MonoBehaviour
 
     private void InitializeIconSets()
     {
-        currentIconSet = new Dictionary<InputAction, Sprite>();
+        currentSpriteNameSet = new Dictionary<InputAction, string>();
+
+        // Initialize default mappings if none are set
+        if (spriteNameMappings == null || spriteNameMappings.Count == 0)
+        {
+            InitializeDefaultMappings();
+        }
+
         UpdateCurrentIconSet();
     }
 
@@ -187,86 +157,153 @@ public class InputIconMapper : MonoBehaviour
 
     private void UpdateCurrentIconSet()
     {
-        currentIconSet.Clear();
+        currentSpriteNameSet.Clear();
 
-        switch (currentDeviceType)
+        // Build sprite name dictionary from mappings
+        foreach (var mapping in spriteNameMappings)
         {
-            case InputDeviceType.Keyboard:
-                currentIconSet[InputAction.Move] = keyboardMove;
-                currentIconSet[InputAction.Run] = keyboardRun;
-                currentIconSet[InputAction.Interact] = keyboardInteract;
-                currentIconSet[InputAction.QTE] = keyboardQTE;
-                currentIconSet[InputAction.Parry] = keyboardParry;
-                currentIconSet[InputAction.Confirm] = keyboardConfirm;
-                currentIconSet[InputAction.Cancel] = keyboardCancel;
-                currentIconSet[InputAction.LightAttack] = keyboardLightAttack;
-                currentIconSet[InputAction.HeavyAttack] = keyboardHeavyAttack;
-                currentIconSet[InputAction.Skill1] = keyboardSkill1;
-                currentIconSet[InputAction.Skill2] = keyboardSkill2;
-                currentIconSet[InputAction.EndTurn] = keyboardEndTurn;
-                break;
+            string spriteName = "";
 
-            case InputDeviceType.XboxController:
-                currentIconSet[InputAction.Move] = xboxMove;
-                currentIconSet[InputAction.Run] = xboxRun;
-                currentIconSet[InputAction.Interact] = xboxInteract;
-                currentIconSet[InputAction.QTE] = xboxQTE;
-                currentIconSet[InputAction.Parry] = xboxParry;
-                currentIconSet[InputAction.Confirm] = xboxConfirm;
-                currentIconSet[InputAction.Cancel] = xboxCancel;
-                currentIconSet[InputAction.LightAttack] = xboxLightAttack;
-                currentIconSet[InputAction.HeavyAttack] = xboxHeavyAttack;
-                currentIconSet[InputAction.Skill1] = xboxSkill1;
-                currentIconSet[InputAction.Skill2] = xboxSkill2;
-                currentIconSet[InputAction.EndTurn] = xboxEndTurn;
-                break;
+            switch (currentDeviceType)
+            {
+                case InputDeviceType.Keyboard:
+                    spriteName = mapping.keyboardSpriteName;
+                    break;
+                case InputDeviceType.XboxController:
+                case InputDeviceType.GenericGamepad:
+                    spriteName = mapping.xboxSpriteName;
+                    break;
+                case InputDeviceType.PlayStationController:
+                    spriteName = mapping.playStationSpriteName;
+                    break;
+            }
 
-            case InputDeviceType.PlayStationController:
-                currentIconSet[InputAction.Move] = psMove;
-                currentIconSet[InputAction.Run] = psRun;
-                currentIconSet[InputAction.Interact] = psInteract;
-                currentIconSet[InputAction.QTE] = psQTE;
-                currentIconSet[InputAction.Parry] = psParry;
-                currentIconSet[InputAction.Confirm] = psConfirm;
-                currentIconSet[InputAction.Cancel] = psCancel;
-                currentIconSet[InputAction.LightAttack] = psLightAttack;
-                currentIconSet[InputAction.HeavyAttack] = psHeavyAttack;
-                currentIconSet[InputAction.Skill1] = psSkill1;
-                currentIconSet[InputAction.Skill2] = psSkill2;
-                currentIconSet[InputAction.EndTurn] = psEndTurn;
-                break;
-
-            case InputDeviceType.GenericGamepad:
-                // Usar Xbox como fallback
-                currentIconSet[InputAction.Move] = xboxMove;
-                currentIconSet[InputAction.Run] = xboxRun;
-                currentIconSet[InputAction.Interact] = xboxInteract;
-                currentIconSet[InputAction.QTE] = xboxQTE;
-                currentIconSet[InputAction.Parry] = xboxParry;
-                currentIconSet[InputAction.Confirm] = xboxConfirm;
-                currentIconSet[InputAction.Cancel] = xboxCancel;
-                currentIconSet[InputAction.LightAttack] = xboxLightAttack;
-                currentIconSet[InputAction.HeavyAttack] = xboxHeavyAttack;
-                currentIconSet[InputAction.Skill1] = xboxSkill1;
-                currentIconSet[InputAction.Skill2] = xboxSkill2;
-                currentIconSet[InputAction.EndTurn] = xboxEndTurn;
-                break;
+            if (!string.IsNullOrEmpty(spriteName))
+            {
+                currentSpriteNameSet[mapping.action] = spriteName;
+            }
         }
-        
-        // No longer need sprite indices - we use sprites directly
     }
-    
+
+    /// <summary>
+    /// Initialize default sprite name mappings - you can customize these
+    /// </summary>
+    private void InitializeDefaultMappings()
+    {
+        spriteNameMappings = new List<InputActionSpriteMap>
+        {
+            new InputActionSpriteMap
+            {
+                action = InputAction.Move,
+                keyboardSpriteName = "WASD",
+                xboxSpriteName = "Xbox_LS",
+                playStationSpriteName = "PS_LS"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Run,
+                keyboardSpriteName = "Shift",
+                xboxSpriteName = "Xbox_R3",
+                playStationSpriteName = "PS_R3"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Interact,
+                keyboardSpriteName = "E",
+                xboxSpriteName = "Xbox_A",
+                playStationSpriteName = "PS_Cross"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.QTE,
+                keyboardSpriteName = "Space",
+                xboxSpriteName = "Xbox_A",
+                playStationSpriteName = "PS_Cross"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Parry,
+                keyboardSpriteName = "Space",
+                xboxSpriteName = "Xbox_A",
+                playStationSpriteName = "PS_Cross"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Confirm,
+                keyboardSpriteName = "Enter",
+                xboxSpriteName = "Xbox_A",
+                playStationSpriteName = "PS_Cross"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Cancel,
+                keyboardSpriteName = "ESC",
+                xboxSpriteName = "Xbox_B",
+                playStationSpriteName = "PS_Circle"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.LightAttack,
+                keyboardSpriteName = "Mouse_Left",
+                xboxSpriteName = "Xbox_X",
+                playStationSpriteName = "PS_Square"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.HeavyAttack,
+                keyboardSpriteName = "Mouse_Right",
+                xboxSpriteName = "Xbox_Y",
+                playStationSpriteName = "PS_Triangle"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Skill1,
+                keyboardSpriteName = "Q",
+                xboxSpriteName = "Xbox_LT",
+                playStationSpriteName = "PS_L2"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.Skill2,
+                keyboardSpriteName = "R",
+                xboxSpriteName = "Xbox_RT",
+                playStationSpriteName = "PS_R2"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.EndTurn,
+                keyboardSpriteName = "Tab",
+                xboxSpriteName = "Xbox_RB",
+                playStationSpriteName = "PS_R1"
+            }
+        };
+    }
+
     /// <summary>
     /// Obtiene el sprite de icono para una acción específica
+    /// Returns null - use GetSpriteNameForAction instead for TMP sprite names
     /// </summary>
+    [System.Obsolete("Use GetSpriteNameForAction instead")]
     public Sprite GetIconForAction(InputAction action)
     {
-        if (currentIconSet.TryGetValue(action, out Sprite icon))
+        Debug.LogWarning("GetIconForAction is deprecated. Use GetSpriteNameForAction instead.");
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the sprite name for an action to use in TMP Sprite Assets
+    /// </summary>
+    public string GetSpriteNameForAction(InputAction action)
+    {
+        if (currentSpriteNameSet.TryGetValue(action, out string spriteName))
         {
-            return icon;
+            return spriteName;
         }
 
-        Debug.LogWarning($"No se encontró icono para la acción: {action} en dispositivo {currentDeviceType}");
+        if (debugMode)
+        {
+            Debug.LogWarning($"No se encontró sprite name para la acción: {action} en dispositivo {currentDeviceType}");
+        }
         return null;
     }
 
@@ -377,41 +414,36 @@ public class InputIconMapper : MonoBehaviour
 
     /// <summary>
     /// Gets sprite or text representation for an action
-    /// Uses the assigned sprites directly - no sprite asset needed!
+    /// Returns TMP sprite tag using sprite name from atlas
     /// </summary>
     private string GetSpriteOrText(InputAction action)
     {
-        // Get the sprite for this action from our current icon set
-        Sprite sprite = GetIconForAction(action);
-        
-        if (sprite != null)
+        // Get the sprite name for this action from our current sprite name set
+        string spriteName = GetSpriteNameForAction(action);
+
+        if (!string.IsNullOrEmpty(spriteName))
         {
-            // Use sprite name in TMP sprite tag
-            // The sprite must be in a TMP Sprite Asset assigned to the TextMeshPro component
-            string spriteName = sprite.name;
-            spriteName = spriteName.Replace("(Clone)", "").Trim();
-            
             if (debugMode)
             {
                 Debug.Log($"[InputIconMapper] Action '{action}' → Sprite: '{spriteName}'");
             }
-            
-            // Return TMP sprite tag using sprite name
+
+            // Return TMP sprite tag using sprite name from atlas
             return $"<sprite name=\"{spriteName}\">";
         }
-        
-        // Fallback to text if no sprite is assigned
+
+        // Fallback to text if no sprite name is assigned
         string textFallback = GetTextForAction(action);
-        
+
         if (debugMode)
         {
-            Debug.LogWarning($"[InputIconMapper] Action '{action}' → No sprite assigned, using text: {textFallback}");
+            Debug.LogWarning($"[InputIconMapper] Action '{action}' → No sprite name assigned, using text: {textFallback}");
         }
-        
+
         // Return formatted text as fallback
         return $"<b>[{textFallback}]</b>";
     }
-    
+
     /// <summary>
     /// Get icon text/sprite for QTE button specifically
     /// </summary>
