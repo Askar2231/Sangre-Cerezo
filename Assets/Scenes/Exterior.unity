@@ -2424,6 +2424,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 278599948}
+  - component: {fileID: 278599949}
   m_Layer: 5
   m_Name: SkillButtonsContainer
   m_TagString: Untagged
@@ -2440,7 +2441,7 @@ RectTransform:
   m_GameObject: {fileID: 278599947}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3.3812, y: 4.4733686, z: 1}
+  m_LocalScale: {x: 3.0419981, y: 0.78553087, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1617704684}
@@ -2450,6 +2451,32 @@ RectTransform:
   m_AnchoredPosition: {x: 669, y: 13.3}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &278599949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278599947}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 0
+  m_Spacing: 0
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &290074551
 GameObject:
   m_ObjectHideFlags: 0
@@ -2938,6 +2965,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 354813073}
+  - component: {fileID: 354813074}
   m_Layer: 5
   m_Name: AttackButtonsContainer
   m_TagString: Untagged
@@ -2954,7 +2982,7 @@ RectTransform:
   m_GameObject: {fileID: 354813072}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3.084838, y: 4.4733686, z: 1}
+  m_LocalScale: {x: 3.084838, y: 0.7361823, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1617704684}
@@ -2964,6 +2992,32 @@ RectTransform:
   m_AnchoredPosition: {x: -646.3, y: -526.7}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &354813074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 354813072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 1
+  m_Spacing: 15
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1001 &361582843
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -12848,6 +12902,9 @@ MonoBehaviour:
   autoSetupLayoutGroups: 1
   buttonSpacing: 10
   forceExpandButtons: 1
+  useVerticalLayoutForAttacks: 1
+  attackButtonSpacing: 40
+  maintainAspectRatio: 1
 --- !u!1001 &1640642894
 PrefabInstance:
   m_ObjectHideFlags: 0
