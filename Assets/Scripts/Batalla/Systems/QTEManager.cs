@@ -19,12 +19,14 @@ public class QTEManager : MonoBehaviour
     public event Action OnQTESuccess;
     public event Action OnQTEFail;
     public event Action<bool> OnQTEWindowStart; // bool = is active
+    public event Action OnQTEWindowEnd; // New event for when window closes
     
     private bool isQTEActive = false;
     private float qteStartTime;
     private bool qteCompleted = false;
     
     public bool IsQTEActive => isQTEActive;
+    public float CurrentQTEDuration => qteWindowDuration; // Expose duration for UI
     
     private void OnEnable()
     {
@@ -118,6 +120,7 @@ public class QTEManager : MonoBehaviour
         Debug.Log(wasPerfect ? "PERFECT QTE!" : "QTE Success!");
         OnQTESuccess?.Invoke();
         OnQTEWindowStart?.Invoke(false);
+        OnQTEWindowEnd?.Invoke();
     }
     
     /// <summary>
@@ -131,6 +134,7 @@ public class QTEManager : MonoBehaviour
         Debug.Log("QTE Failed!");
         OnQTEFail?.Invoke();
         OnQTEWindowStart?.Invoke(false);
+        OnQTEWindowEnd?.Invoke();
     }
     
     /// <summary>
@@ -143,6 +147,7 @@ public class QTEManager : MonoBehaviour
             isQTEActive = false;
             qteCompleted = true;
             OnQTEWindowStart?.Invoke(false);
+            OnQTEWindowEnd?.Invoke();
         }
     }
 }

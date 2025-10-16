@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// Skill action
@@ -7,6 +8,7 @@ public class SkillAction : BattleAction
 {
     private SkillData skillData;
     private Animator animator;
+    private MonoBehaviour coroutineRunner; // For running coroutines
     
     public override float StaminaCost => skillData.staminaCost;
     public override ActionType ActionType => ActionType.Skill;
@@ -17,6 +19,7 @@ public class SkillAction : BattleAction
     {
         this.skillData = skillData;
         this.animator = animator;
+        this.coroutineRunner = performer.GetComponent<MonoBehaviour>();
     }
     
     public override void Execute()
@@ -34,11 +37,34 @@ public class SkillAction : BattleAction
         // Play animation
         animator.Play(skillData.animationStateName);
         
-        // Apply skill effects
+        // Apply skill effects immediately
         ApplySkillEffects();
         
-        // For now, complete immediately
-        // TODO: Wait for animation to complete
+        // Wait for animation to complete
+        if (coroutineRunner != null)
+        {
+            coroutineRunner.StartCoroutine(WaitForAnimationComplete());
+        }
+        else
+        {
+            CompleteAction();
+        }
+    }
+    
+    private IEnumerator WaitForAnimationComplete()
+    {
+        // Wait one frame for animation to start
+        yield return null;
+        
+        // Wait for animation to complete
+        AnimatorStateInfo stateInfo;
+        do
+        {
+            stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            yield return null;
+        }
+        while (stateInfo.IsName(skillData.animationStateName) && stateInfo.normalizedTime < 1f);
+        
         CompleteAction();
     }
     

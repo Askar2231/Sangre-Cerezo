@@ -42,8 +42,9 @@ public enum InputAction
     Parry,
     Confirm,
     Cancel,
-    Attack,
-    Skill,
+    LightAttack,
+    HeavyAttack,
+    Skill1,
+    Skill2,
     EndTurn
 }
-

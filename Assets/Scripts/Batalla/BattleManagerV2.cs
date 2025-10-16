@@ -421,6 +421,12 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("Enemy has been defeated!");
         battleResult = BattleResult.PlayerVictory;
+        
+        // Play victory animation for player
+        if (playerController?.Character != null)
+        {
+            playerController.Character.PlayVictoryAnimation();
+        }
 
         // NO destruir aquí, dejar que el BattleTrigger lo maneje
         // StartCoroutine(DestroyEnemyAfterDelay(1.5f)); // COMENTAR ESTA LÍNEA
@@ -823,6 +829,14 @@ public class BattleManagerV2 : MonoBehaviour
     {
         CleanupBattleState();
         Debug.Log("BattleManager force reset completed");
+    }
+    
+    /// <summary>
+    /// Get the current enemy character (for dynamic UI)
+    /// </summary>
+    public BattleCharacter GetCurrentEnemy()
+    {
+        return enemyController?.Character;
     }
 
     #endregion

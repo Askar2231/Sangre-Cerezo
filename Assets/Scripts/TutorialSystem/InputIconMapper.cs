@@ -36,8 +36,10 @@ public class InputIconMapper : MonoBehaviour
     [SerializeField] private Sprite keyboardParry;
     [SerializeField] private Sprite keyboardConfirm;
     [SerializeField] private Sprite keyboardCancel;
-    [SerializeField] private Sprite keyboardAttack;
-    [SerializeField] private Sprite keyboardSkill;
+    [SerializeField] private Sprite keyboardLightAttack;
+    [SerializeField] private Sprite keyboardHeavyAttack;
+    [SerializeField] private Sprite keyboardSkill1;
+    [SerializeField] private Sprite keyboardSkill2;
     [SerializeField] private Sprite keyboardEndTurn;
 
     [Header("Sprites de Xbox")]
@@ -48,8 +50,10 @@ public class InputIconMapper : MonoBehaviour
     [SerializeField] private Sprite xboxParry;
     [SerializeField] private Sprite xboxConfirm;
     [SerializeField] private Sprite xboxCancel;
-    [SerializeField] private Sprite xboxAttack;
-    [SerializeField] private Sprite xboxSkill;
+    [SerializeField] private Sprite xboxLightAttack;
+    [SerializeField] private Sprite xboxHeavyAttack;
+    [SerializeField] private Sprite xboxSkill1;
+    [SerializeField] private Sprite xboxSkill2;
     [SerializeField] private Sprite xboxEndTurn;
 
     [Header("Sprites de PlayStation")]
@@ -60,8 +64,10 @@ public class InputIconMapper : MonoBehaviour
     [SerializeField] private Sprite psParry;
     [SerializeField] private Sprite psConfirm;
     [SerializeField] private Sprite psCancel;
-    [SerializeField] private Sprite psAttack;
-    [SerializeField] private Sprite psSkill;
+    [SerializeField] private Sprite psLightAttack;
+    [SerializeField] private Sprite psHeavyAttack;
+    [SerializeField] private Sprite psSkill1;
+    [SerializeField] private Sprite psSkill2;
     [SerializeField] private Sprite psEndTurn;
 
     [Header("Configuración")]
@@ -193,8 +199,10 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = keyboardParry;
                 currentIconSet[InputAction.Confirm] = keyboardConfirm;
                 currentIconSet[InputAction.Cancel] = keyboardCancel;
-                currentIconSet[InputAction.Attack] = keyboardAttack;
-                currentIconSet[InputAction.Skill] = keyboardSkill;
+                currentIconSet[InputAction.LightAttack] = keyboardLightAttack;
+                currentIconSet[InputAction.HeavyAttack] = keyboardHeavyAttack;
+                currentIconSet[InputAction.Skill1] = keyboardSkill1;
+                currentIconSet[InputAction.Skill2] = keyboardSkill2;
                 currentIconSet[InputAction.EndTurn] = keyboardEndTurn;
                 break;
 
@@ -206,8 +214,10 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = xboxParry;
                 currentIconSet[InputAction.Confirm] = xboxConfirm;
                 currentIconSet[InputAction.Cancel] = xboxCancel;
-                currentIconSet[InputAction.Attack] = xboxAttack;
-                currentIconSet[InputAction.Skill] = xboxSkill;
+                currentIconSet[InputAction.LightAttack] = xboxLightAttack;
+                currentIconSet[InputAction.HeavyAttack] = xboxHeavyAttack;
+                currentIconSet[InputAction.Skill1] = xboxSkill1;
+                currentIconSet[InputAction.Skill2] = xboxSkill2;
                 currentIconSet[InputAction.EndTurn] = xboxEndTurn;
                 break;
 
@@ -219,8 +229,10 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = psParry;
                 currentIconSet[InputAction.Confirm] = psConfirm;
                 currentIconSet[InputAction.Cancel] = psCancel;
-                currentIconSet[InputAction.Attack] = psAttack;
-                currentIconSet[InputAction.Skill] = psSkill;
+                currentIconSet[InputAction.LightAttack] = psLightAttack;
+                currentIconSet[InputAction.HeavyAttack] = psHeavyAttack;
+                currentIconSet[InputAction.Skill1] = psSkill1;
+                currentIconSet[InputAction.Skill2] = psSkill2;
                 currentIconSet[InputAction.EndTurn] = psEndTurn;
                 break;
 
@@ -233,13 +245,17 @@ public class InputIconMapper : MonoBehaviour
                 currentIconSet[InputAction.Parry] = xboxParry;
                 currentIconSet[InputAction.Confirm] = xboxConfirm;
                 currentIconSet[InputAction.Cancel] = xboxCancel;
-                currentIconSet[InputAction.Attack] = xboxAttack;
-                currentIconSet[InputAction.Skill] = xboxSkill;
+                currentIconSet[InputAction.LightAttack] = xboxLightAttack;
+                currentIconSet[InputAction.HeavyAttack] = xboxHeavyAttack;
+                currentIconSet[InputAction.Skill1] = xboxSkill1;
+                currentIconSet[InputAction.Skill2] = xboxSkill2;
                 currentIconSet[InputAction.EndTurn] = xboxEndTurn;
                 break;
         }
+        
+        // No longer need sprite indices - we use sprites directly
     }
-
+    
     /// <summary>
     /// Obtiene el sprite de icono para una acción específica
     /// </summary>
@@ -283,8 +299,10 @@ public class InputIconMapper : MonoBehaviour
             case InputAction.Parry: return "Espacio";
             case InputAction.Confirm: return "Enter";
             case InputAction.Cancel: return "ESC";
-            case InputAction.Attack: return "Clic Izquierdo";
-            case InputAction.Skill: return "Clic Derecho";
+            case InputAction.LightAttack: return "Clic Izquierdo";
+            case InputAction.HeavyAttack: return "Clic Derecho";
+            case InputAction.Skill1: return "Q";
+            case InputAction.Skill2: return "R";
             case InputAction.EndTurn: return "Tab";
             default: return action.ToString();
         }
@@ -301,8 +319,10 @@ public class InputIconMapper : MonoBehaviour
             case InputAction.Parry: return "A";
             case InputAction.Confirm: return "A";
             case InputAction.Cancel: return "B";
-            case InputAction.Attack: return "X";
-            case InputAction.Skill: return "Y";
+            case InputAction.LightAttack: return "X";
+            case InputAction.HeavyAttack: return "Y";
+            case InputAction.Skill1: return "LT";
+            case InputAction.Skill2: return "RT";
             case InputAction.EndTurn: return "RB";
             default: return action.ToString();
         }
@@ -319,8 +339,10 @@ public class InputIconMapper : MonoBehaviour
             case InputAction.Parry: return "Cruz";
             case InputAction.Confirm: return "Cruz";
             case InputAction.Cancel: return "Círculo";
-            case InputAction.Attack: return "Cuadrado";
-            case InputAction.Skill: return "Triángulo";
+            case InputAction.LightAttack: return "Cuadrado";
+            case InputAction.HeavyAttack: return "Triángulo";
+            case InputAction.Skill1: return "L2";
+            case InputAction.Skill2: return "R2";
             case InputAction.EndTurn: return "R1";
             default: return action.ToString();
         }
@@ -344,29 +366,58 @@ public class InputIconMapper : MonoBehaviour
         processedText = processedText.Replace("{Parry}", GetSpriteOrText(InputAction.Parry));
         processedText = processedText.Replace("{Confirm}", GetSpriteOrText(InputAction.Confirm));
         processedText = processedText.Replace("{Cancel}", GetSpriteOrText(InputAction.Cancel));
-        processedText = processedText.Replace("{Attack}", GetSpriteOrText(InputAction.Attack));
-        processedText = processedText.Replace("{Skill}", GetSpriteOrText(InputAction.Skill));
+        processedText = processedText.Replace("{LightAttack}", GetSpriteOrText(InputAction.LightAttack));
+        processedText = processedText.Replace("{HeavyAttack}", GetSpriteOrText(InputAction.HeavyAttack));
+        processedText = processedText.Replace("{Skill1}", GetSpriteOrText(InputAction.Skill1));
+        processedText = processedText.Replace("{Skill2}", GetSpriteOrText(InputAction.Skill2));
         processedText = processedText.Replace("{EndTurn}", GetSpriteOrText(InputAction.EndTurn));
 
         return processedText;
     }
 
     /// <summary>
-    /// Obtiene sprite tag de TMP si el sprite existe, sino devuelve texto
+    /// Gets sprite or text representation for an action
+    /// Uses the assigned sprites directly - no sprite asset needed!
     /// </summary>
     private string GetSpriteOrText(InputAction action)
     {
+        // Get the sprite for this action from our current icon set
         Sprite sprite = GetIconForAction(action);
         
         if (sprite != null)
         {
-            // Usar el nombre del sprite para el tag de TMP
-            // Formato: <sprite name="nombre_sprite">
-            return $"<sprite name=\"{sprite.name}\">";
+            // Use sprite name in TMP sprite tag
+            // The sprite must be in a TMP Sprite Asset assigned to the TextMeshPro component
+            string spriteName = sprite.name;
+            spriteName = spriteName.Replace("(Clone)", "").Trim();
+            
+            if (debugMode)
+            {
+                Debug.Log($"[InputIconMapper] Action '{action}' → Sprite: '{spriteName}'");
+            }
+            
+            // Return TMP sprite tag using sprite name
+            return $"<sprite name=\"{spriteName}\">";
         }
         
-        // Fallback a texto si no hay sprite
-        return GetTextForAction(action);
+        // Fallback to text if no sprite is assigned
+        string textFallback = GetTextForAction(action);
+        
+        if (debugMode)
+        {
+            Debug.LogWarning($"[InputIconMapper] Action '{action}' → No sprite assigned, using text: {textFallback}");
+        }
+        
+        // Return formatted text as fallback
+        return $"<b>[{textFallback}]</b>";
+    }
+    
+    /// <summary>
+    /// Get icon text/sprite for QTE button specifically
+    /// </summary>
+    public string GetIconForQTE()
+    {
+        return GetSpriteOrText(InputAction.QTE);
     }
 
     public InputDeviceType GetCurrentDeviceType()
@@ -374,4 +425,3 @@ public class InputIconMapper : MonoBehaviour
         return currentDeviceType;
     }
 }
-

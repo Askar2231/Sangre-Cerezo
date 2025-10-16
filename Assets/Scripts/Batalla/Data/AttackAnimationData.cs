@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 /// <summary>
@@ -7,6 +8,18 @@ using System.Collections.Generic;
 [CreateAssetMenu(fileName = "AttackAnimationData", menuName = "Battle/Attack Animation Data")]
 public class AttackAnimationData : ScriptableObject
 {
+    [Header("UI Display")]
+    [Tooltip("Display name for this attack")]
+    public string displayName = "Attack";
+    
+    [Tooltip("Description shown in UI")]
+    [TextArea(2, 4)]
+    public string description = "Basic attack";
+    
+    [Header("Input Binding")]
+    [Tooltip("Input action for this attack (drag from Input Actions asset)")]
+    public InputActionReference inputAction;
+    
     [Header("Animation")]
     public string animationStateName; // Name of the animation state in Animator
     public float animationDuration; // For reference only

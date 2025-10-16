@@ -71,26 +71,56 @@ Create these animation states:
 
 ### Step 3: Set Up Transitions
 
-**Important:** Set ALL transitions to:
+**CRITICAL: Do NOT create transitions FROM Idle to attack states!**
+
+The battle system uses `animator.Play()` which directly forces state changes, bypassing transitions. If you create transitions from Idle, the animator may auto-transition to attacks even outside combat!
+
+**Correct Setup:**
+
+✅ **Create transitions FROM attack states TO Idle:**
+
+- LightAttack → Idle
+- HeavyAttack → Idle
+- SkillAttack → Idle
+- TakeDamage → Idle
+- Victory → Idle
+- Death → Idle (no transition needed, stays in Death)
+
+❌ **DO NOT create transitions FROM Idle TO attack states**
+
+**Transition Settings (for transitions TO Idle):**
 
 - **Has Exit Time:** ✅ Enabled
-- **Exit Time:** 1.0
-- **Transition Duration:** 0.0 seconds
+- **Exit Time:** 1.0 (animation completes fully)
+- **Transition Duration:** 0.1-0.2 seconds (smooth blend)
 - **Interruption Source:** None
 
-This ensures animations play fully before returning to Idle.
+This ensures animations play fully before returning to Idle, but they never auto-play from Idle.
 
 ### Example Animator Structure:
 
 ```
 ┌─────────┐
-│  Idle   │ (Default)
-└────┬────┘
+│  Idle   │ (Default State - No outgoing transitions!)
+└─────────┘
+     ↑
+     │ (Only incoming transitions)
      │
-     ├──→ LightAttack ──→ (back to Idle)
-     ├──→ HeavyAttack ──→ (back to Idle)
-     └──→ SkillAttack ──→ (back to Idle)
+     ├── LightAttack ──┘
+     ├── HeavyAttack ──┘
+     ├── SkillAttack ──┘
+     ├── TakeDamage ──┘
+     └── Victory ──────┘
+
+Death (stays in Death state, no transition back)
 ```
+
+### Why This Works:
+
+- `animator.Play("LightAttack")` in code **forces** the animator to LightAttack state
+- Once animation completes (Exit Time = 1.0), it automatically returns to Idle
+- Since there are no transitions FROM Idle, it never auto-plays animations
+- This prevents animations from playing outside of combat
 
 ---
 
@@ -503,6 +533,35 @@ Add this to `AnimationSequencer.cs` in `CheckQTETriggers()`:
 
 ```csharp
 Debug.Log($"Current time: {currentTime}, Previous: {previousTime}");
+```
+
+---
+
+### Problem: Animations play automatically outside combat / Player attacks without input
+
+**Cause:**
+You have transitions FROM Idle TO attack states in your Animator Controller.
+
+**Solution:**
+
+1. Open your Animator Controller
+2. Select the Idle state
+3. **Delete ALL outgoing transitions** from Idle (right-click transition → Delete)
+4. Keep only the incoming transitions (Attack → Idle, TakeDamage → Idle, etc.)
+
+**Why:**
+The battle system uses `animator.Play()` to force state changes. Transitions from Idle are unnecessary and cause auto-playing. Only create transitions that return TO Idle, never FROM Idle.
+
+**Correct Structure:**
+
+```
+     ↑ Only incoming transitions
+     │
+Idle │ ← LightAttack
+     │ ← HeavyAttack
+     │ ← TakeDamage
+
+❌ No outgoing transitions from Idle!
 ```
 
 ---

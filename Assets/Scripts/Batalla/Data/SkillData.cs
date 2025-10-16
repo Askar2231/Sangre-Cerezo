@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// ScriptableObject that stores skill data
@@ -8,7 +9,13 @@ public class SkillData : ScriptableObject
 {
     [Header("Basic Info")]
     public string skillName;
+    
+    [TextArea(2, 4)]
     public string description;
+    
+    [Header("Input Binding")]
+    [Tooltip("Input action for this skill (drag from Input Actions asset)")]
+    public InputActionReference inputAction;
     
     [Header("Animation")]
     public string animationStateName;

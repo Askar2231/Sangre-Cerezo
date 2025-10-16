@@ -16,6 +16,11 @@ public class BattleCharacter : MonoBehaviour
     [Header("Character Type")]
     [SerializeField] private bool isPlayer = false;
     
+    [Header("Animation Names")]
+    [SerializeField] private string takeDamageAnimationName = "TakeDamage";
+    [SerializeField] private string deathAnimationName = "Death";
+    [SerializeField] private string victoryAnimationName = "Victory";
+    
     // Properties
     public float MaxHealth => maxHealth;
     public float CurrentHealth { get; private set; }
@@ -46,6 +51,13 @@ public class BattleCharacter : MonoBehaviour
         
         OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
         Debug.Log($"{gameObject.name} took {damage} damage! HP: {CurrentHealth}/{maxHealth}");
+        
+        // Play TakeDamage animation if alive
+        if (CurrentHealth > 0 && animator != null && !string.IsNullOrEmpty(takeDamageAnimationName))
+        {
+            animator.Play(takeDamageAnimationName);
+            Debug.Log($"{gameObject.name} playing TakeDamage animation");
+        }
         
         if (isPlayer && GamepadVibrationManager.Instance != null)
         {
@@ -85,12 +97,32 @@ public class BattleCharacter : MonoBehaviour
     protected virtual void Die()
     {
         Debug.Log($"{gameObject.name} has been defeated!");
+        
+        // Play Death animation
+        if (animator != null && !string.IsNullOrEmpty(deathAnimationName))
+        {
+            animator.Play(deathAnimationName);
+            Debug.Log($"{gameObject.name} playing Death animation");
+        }
+        
         OnDeath?.Invoke();
 
        
         if (isPlayer && GamepadVibrationManager.Instance != null)
         {
             GamepadVibrationManager.Instance.VibrateOnDeath();
+        }
+    }
+    
+    /// <summary>
+    /// Play victory animation (typically for player only)
+    /// </summary>
+    public void PlayVictoryAnimation()
+    {
+        if (animator != null && !string.IsNullOrEmpty(victoryAnimationName))
+        {
+            animator.Play(victoryAnimationName);
+            Debug.Log($"{gameObject.name} playing Victory animation");
         }
     }
     

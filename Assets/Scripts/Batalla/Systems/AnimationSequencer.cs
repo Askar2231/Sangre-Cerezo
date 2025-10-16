@@ -11,21 +11,28 @@ public class AnimationSequencer : MonoBehaviour
 {
     [SerializeField] private Animator animator;
     
+    [Header("QTE Warning Settings")]
+    [SerializeField] private float qteWarningTime = 0.3f; // Seconds before QTE to show warning
+    
     private AttackAnimationData currentAttackData;
     private HashSet<int> triggeredQTEIndices = new HashSet<int>();
+    private HashSet<int> triggeredWarningIndices = new HashSet<int>();
     private bool hitTriggered = false;
     
     private Action onAnimationComplete;
     private Action onHitFrame;
     private QTEManager qteManager;
+    private QTEVisualFeedback qteVisualFeedback;
     
     private bool isPlayingSequence = false;
     private string currentAnimationState;
+    private float animationLength; // Store animation length for timing calculations
     
-    public void Initialize(Animator anim, QTEManager qteManager)
+    public void Initialize(Animator anim, QTEManager qteManager, QTEVisualFeedback visualFeedback = null)
     {
         this.animator = anim;
         this.qteManager = qteManager;
+        this.qteVisualFeedback = visualFeedback;
     }
     
     /// <summary>
@@ -47,9 +54,13 @@ public class AnimationSequencer : MonoBehaviour
         
         // Reset tracking
         triggeredQTEIndices.Clear();
+        triggeredWarningIndices.Clear();
         hitTriggered = false;
         isPlayingSequence = true;
         currentAnimationState = attackData.animationStateName;
+        
+        // Get animation length
+        animationLength = GetAnimationLength(attackData.animationStateName);
         
         // Play the animation
         animator.Play(attackData.animationStateName);
@@ -86,6 +97,9 @@ public class AnimationSequencer : MonoBehaviour
             // Check for QTE timings
             CheckQTETriggers(normalizedTime, previousNormalizedTime);
             
+            // Check for QTE warnings (pre-warnings before QTE starts)
+            CheckQTEWarnings(normalizedTime, previousNormalizedTime);
+            
             // Check for hit frame
             CheckHitTrigger(normalizedTime, previousNormalizedTime);
             
@@ -119,6 +133,35 @@ public class AnimationSequencer : MonoBehaviour
             {
                 TriggerQTE(i);
                 triggeredQTEIndices.Add(i);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Check if any QTE warnings should be triggered (before QTE starts)
+    /// </summary>
+    private void CheckQTEWarnings(float currentTime, float previousTime)
+    {
+        if (currentAttackData.qteNormalizedTimings == null || qteVisualFeedback == null) return;
+        if (animationLength <= 0) return; // Need animation length for warning calculation
+        
+        for (int i = 0; i < currentAttackData.qteNormalizedTimings.Count; i++)
+        {
+            float qteTime = currentAttackData.qteNormalizedTimings[i];
+            
+            // Calculate warning time in normalized time
+            // warningTime (seconds) -> normalized time = warningTime / animationLength
+            float warningOffset = qteWarningTime / animationLength;
+            float warningTime = Mathf.Max(0, qteTime - warningOffset);
+            
+            // Check if we've crossed the warning timing
+            if (!triggeredWarningIndices.Contains(i) && 
+                currentTime >= warningTime && 
+                previousTime < warningTime)
+            {
+                qteVisualFeedback.ShowPreWarning();
+                triggeredWarningIndices.Add(i);
+                Debug.Log($"QTE Warning {i + 1} triggered at {currentTime:F2} (QTE at {qteTime:F2})");
             }
         }
     }
@@ -172,6 +215,27 @@ public class AnimationSequencer : MonoBehaviour
             StopAllCoroutines();
             CompleteSequence();
         }
+    }
+    
+    /// <summary>
+    /// Get the length of an animation clip by state name
+    /// </summary>
+    private float GetAnimationLength(string stateName)
+    {
+        if (animator == null || animator.runtimeAnimatorController == null)
+            return 0f;
+        
+        AnimationClip[] clips = animator.runtimeAnimatorController.animationClips;
+        foreach (AnimationClip clip in clips)
+        {
+            if (clip.name == stateName)
+            {
+                return clip.length;
+            }
+        }
+        
+        Debug.LogWarning($"Could not find animation length for state: {stateName}");
+        return 1f; // Default fallback
     }
 }
 

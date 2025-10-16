@@ -54,8 +54,20 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 2594
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
       propertyPath: m_LocalPosition.y
@@ -63,7 +75,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -6.94
+      value: -336.6
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
       propertyPath: m_LocalRotation.w
@@ -93,6 +105,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
       propertyPath: m_Name
       value: Enemy
@@ -120,6 +136,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5643974148025151468}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2961903938331946691}
   m_SourcePrefab: {fileID: 100100000, guid: 4a7d9770b4fd0ca41934d66e27c3e2a9, type: 3}
 --- !u!4 &328174275936759636 stripped
 Transform:
@@ -143,7 +162,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fec186cc1ddc6904088575be5fb596ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enemyCharacter: {fileID: 0}
+  enemyCharacter: {fileID: 6635081564646639508}
+  attackAnimationName: EnemyAttack
   attackDamage: 15
   attackDuration: 2
   parryWindowStartTime: 1.5
@@ -163,7 +183,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   maxStamina: 100
-  animator: {fileID: 0}
+  animator: {fileID: 2961903938331946691}
+  isPlayer: 0
+  takeDamageAnimationName: TakeDamage
+  deathAnimationName: Death
+  victoryAnimationName: Victory
 --- !u!65 &1293707986575004029
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -198,10 +222,31 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   battleManager: {fileID: 0}
-  playerRetreatDistance: 5
   playerTransform: {fileID: 0}
   enemyTransform: {fileID: 328174275936759636}
   battleUICanvas: {fileID: 0}
+--- !u!95 &2961903938331946691
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1136658007482037742}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: bf118263baf3cab4f82c6f85eebd62b7, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1001 &1916814917262528432
 PrefabInstance:
   m_ObjectHideFlags: 0

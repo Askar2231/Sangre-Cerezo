@@ -11,6 +11,7 @@ public class PlayerBattleController : MonoBehaviour
 
     [Header("Attack Data")]
     [SerializeField] private AttackAnimationData lightAttackData;
+    [SerializeField] private AttackAnimationData heavyAttackData;
 
     [Header("Skills")]
     [SerializeField] private SkillData[] availableSkills;
@@ -22,6 +23,9 @@ public class PlayerBattleController : MonoBehaviour
     // Components
     private AnimationSequencer animationSequencer;
     private QTEManager qteManager;
+    
+    // Current action being executed
+    private BattleAction currentAction;
 
     public BattleCharacter Character => playerCharacter;
 
@@ -63,36 +67,86 @@ public class PlayerBattleController : MonoBehaviour
 
         OnActionStarted?.Invoke(ActionType.LightAttack);
 
-        // Use AnimationSequencer if available
-        if (animationSequencer != null && lightAttackData != null)
+        // Create and execute AttackAction
+        if (animationSequencer != null && qteManager != null && lightAttackData != null)
         {
-            Debug.Log("Playing attack animation through AnimationSequencer");
-            animationSequencer.PlayAnimationSequence(
+            Debug.Log("Executing attack through AttackAction system");
+            
+            // Create attack action
+            currentAction = new AttackAction(
+                playerCharacter,
+                target,
                 lightAttackData,
-                () =>
-                {
-                    OnActionComplete?.Invoke();
-
-                    // Haptic feedback on attack complete
-                    if (GamepadVibrationManager.Instance != null)
-                    {
-                        GamepadVibrationManager.Instance.VibrateOnLightAttack();
-                    }
-                },
-                () => ExecuteAttackDamage(target)
+                animationSequencer,
+                qteManager
             );
+            
+            // Subscribe to completion
+            currentAction.OnActionComplete += HandleActionComplete;
+            
+            // Execute the action
+            currentAction.Execute();
         }
         else
         {
-            // Fallback: Execute immediately if no AnimationSequencer
-            Debug.LogWarning("No AnimationSequencer or attack data - executing attack immediately");
-            ExecuteAttackDamage(target);
+            // Fallback: Execute immediately if systems not available
+            Debug.LogWarning("AttackAction system not available - executing attack immediately");
+            ExecuteAttackDamageFallback(target);
             OnActionComplete?.Invoke();
 
             // Haptic feedback
             if (GamepadVibrationManager.Instance != null)
             {
                 GamepadVibrationManager.Instance.VibrateOnLightAttack();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Execute heavy attack against target
+    /// Heavy attacks deal more damage but may require more stamina/have longer animations
+    /// </summary>
+    public void ExecuteHeavyAttack(BattleCharacter target)
+    {
+        if (!CanPerformAction(ActionType.HeavyAttack))
+        {
+            Debug.LogWarning("Cannot perform heavy attack - insufficient stamina or conditions not met");
+            return;
+        }
+
+        OnActionStarted?.Invoke(ActionType.HeavyAttack);
+
+        // Create and execute AttackAction with heavy attack data
+        if (animationSequencer != null && qteManager != null && heavyAttackData != null)
+        {
+            Debug.Log("Executing heavy attack through AttackAction system");
+            
+            // Create attack action
+            currentAction = new AttackAction(
+                playerCharacter,
+                target,
+                heavyAttackData,
+                animationSequencer,
+                qteManager
+            );
+            
+            // Subscribe to completion
+            currentAction.OnActionComplete += HandleActionComplete;
+            
+            // Execute the action
+            currentAction.Execute();
+        }
+        else
+        {
+            // Fallback: Execute immediately if systems not available
+            Debug.LogWarning("AttackAction system not available for heavy attack - executing immediately");
+            ExecuteAttackDamageFallback(target, isHeavy: true);
+            OnActionComplete?.Invoke();
+
+            // Haptic feedback (stronger for heavy attack)
+            if (GamepadVibrationManager.Instance != null)
+            {
+                GamepadVibrationManager.Instance.VibrateOnHeavyAttack();
             }
         }
     }
@@ -118,18 +172,34 @@ public class PlayerBattleController : MonoBehaviour
 
         OnActionStarted?.Invoke(ActionType.Skill);
 
-        // Play skill animation directly (skills don't use QTE system)
+        // Create and execute SkillAction
         if (playerCharacter?.Animator != null && skill != null)
         {
-            playerCharacter.Animator.Play(skill.animationStateName);
-            Debug.Log($"Playing skill animation: {skill.animationStateName}");
+            Debug.Log($"Executing skill through SkillAction system: {skill.skillName}");
+            
+            // Create skill action
+            currentAction = new SkillAction(
+                playerCharacter,
+                target,
+                skill,
+                playerCharacter.Animator
+            );
+            
+            // Subscribe to completion
+            currentAction.OnActionComplete += HandleActionComplete;
+            
+            // Execute the action
+            currentAction.Execute();
+        }
+        else
+        {
+            // Fallback
+            Debug.LogWarning("SkillAction system not available - executing skill immediately");
+            ExecuteSkillDamageFallback(skill, target);
+            OnActionComplete?.Invoke();
         }
 
-        // Execute skill damage and effects
-        ExecuteSkillDamage(skill, target);
-        OnActionComplete?.Invoke();
-
-        // Agregar estas 18 líneas
+        // Haptic feedback
         if (GamepadVibrationManager.Instance != null)
         {
             if (skill.damageAmount >= 30f)
@@ -148,30 +218,56 @@ public class PlayerBattleController : MonoBehaviour
     }
 
     /// <summary>
-    /// Execute the actual attack damage
+    /// Handle action completion callback
     /// </summary>
-    private void ExecuteAttackDamage(BattleCharacter target)
+    private void HandleActionComplete()
     {
-        if (lightAttackData == null)
+        // Unsubscribe from the action
+        if (currentAction != null)
         {
-            Debug.LogError("Light attack data is null!");
+            currentAction.OnActionComplete -= HandleActionComplete;
+            currentAction = null;
+        }
+        
+        // Notify battle manager
+        OnActionComplete?.Invoke();
+        
+        // Haptic feedback
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnLightAttack();
+        }
+        
+        Debug.Log("Player action completed");
+    }
+
+    /// <summary>
+    /// Fallback attack damage (used when AttackAction system unavailable)
+    /// </summary>
+    private void ExecuteAttackDamageFallback(BattleCharacter target, bool isHeavy = false)
+    {
+        AttackAnimationData attackData = isHeavy ? heavyAttackData : lightAttackData;
+        
+        if (attackData == null)
+        {
+            Debug.LogError($"{(isHeavy ? "Heavy" : "Light")} attack data is null!");
             return;
         }
 
         // Consume stamina
-        playerCharacter.StaminaManager.ConsumeStamina(lightAttackData.staminaCost);
+        playerCharacter.StaminaManager.ConsumeStamina(attackData.staminaCost);
 
-        // Calculate and apply damage
-        float damage = lightAttackData.baseDamage;
+        // Calculate and apply damage (no QTE bonus in fallback)
+        float damage = attackData.baseDamage;
         target.TakeDamage(damage);
 
-        Debug.Log($"Player deals {damage} damage to {target.name}");
+        Debug.Log($"Player deals {damage} damage to {target.name} (fallback mode)");
     }
 
     /// <summary>
-    /// Execute the actual skill damage
+    /// Fallback skill damage (used when SkillAction system unavailable)
     /// </summary>
-    private void ExecuteSkillDamage(SkillData skill, BattleCharacter target)
+    private void ExecuteSkillDamageFallback(SkillData skill, BattleCharacter target)
     {
         if (skill == null)
         {

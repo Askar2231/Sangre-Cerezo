@@ -7,9 +7,15 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     public Transform target; // Player
     public Vector3 offset = new Vector3(0, 1.2f, -2.5f); // REDUCIR de (0, 2f, -4f)
 
-    [Header("Rotación Orbital")]
+    [Header("Rotación Orbital - Mouse")]
     public float mouseXSens = 180f;
     public float mouseYSens = 120f;
+    
+    [Header("Rotación Orbital - Joystick")]
+    public float joystickXSens = 100f;
+    public float joystickYSens = 80f;
+    
+    [Header("Pitch Limits")]
     public float minPitch = -10f;
     public float maxPitch = 60f;
 
@@ -93,14 +99,33 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
 
         Vector2 lookInput = lookAction.action.ReadValue<Vector2>();
 
+        // Detectar si es mouse o joystick basado en la magnitud y el dispositivo
+        bool isMouseInput = false;
+        float sensitivityX = joystickXSens;
+        float sensitivityY = joystickYSens;
+        
+        // Detectar tipo de input
+        if (lookAction.action.activeControl != null)
+        {
+            string controlPath = lookAction.action.activeControl.path.ToLower();
+            isMouseInput = controlPath.Contains("mouse");
+        }
+        
+        // Usar sensibilidad apropiada
+        if (isMouseInput)
+        {
+            sensitivityX = mouseXSens;
+            sensitivityY = mouseYSens;
+        }
+
         // Asignamos los componentes X e Y a las variables que el script ya usa
         float mouseX = lookInput.x;
         float mouseY = lookInput.y;
 
         if (Mathf.Abs(mouseX) > 0.01f || Mathf.Abs(mouseY) > 0.01f)
         {
-            yaw += mouseX * mouseXSens * Time.deltaTime;
-            pitch -= mouseY * mouseYSens * Time.deltaTime;
+            yaw += mouseX * sensitivityX * Time.deltaTime;
+            pitch -= mouseY * sensitivityY * Time.deltaTime;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
             lastInputTime = Time.time;
