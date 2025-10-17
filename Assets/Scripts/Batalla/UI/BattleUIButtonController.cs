@@ -22,6 +22,8 @@ public class BattleUIButtonController : MonoBehaviour
     [SerializeField] private Button qteButton;
     
     [Header("Input Actions - Link to InputSystem_Actions")]
+    // NOTE: These are now just for icon display purposes
+    // Actual input listening is handled by BattleInputManager
     [SerializeField] private InputActionReference lightAttackAction;
     [SerializeField] private InputActionReference heavyAttackAction;
     [SerializeField] private InputActionReference skill1Action;
@@ -38,6 +40,7 @@ public class BattleUIButtonController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI qteText;
     
     [Header("System References")]
+    [SerializeField] private BattleInputManager inputManager; // NEW: Route clicks through input manager
     [SerializeField] private ParrySystem parrySystem;
     [SerializeField] private QTEManager qteManager;
     
@@ -45,12 +48,19 @@ public class BattleUIButtonController : MonoBehaviour
     [SerializeField] private bool showInputIcons = true;
     [SerializeField] private bool debugMode = false;
     
-    // Events that the BattleManager can subscribe to
+    // Events DEPRECATED - now handled by BattleInputManager
+    // Keeping for backward compatibility during transition
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnLightAttackPressed;
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnHeavyAttackPressed;
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnSkill1Pressed;
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnSkill2Pressed;
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnParryPressed;
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnQTEPressed;
     
     private bool isInputEnabled = false;
@@ -59,7 +69,7 @@ public class BattleUIButtonController : MonoBehaviour
     
     private void OnEnable()
     {
-        // Subscribe to action button clicks
+        // Subscribe to action button clicks - now route through BattleInputManager
         if (lightAttackButton != null)
             lightAttackButton.onClick.AddListener(() => TriggerLightAttack());
         
@@ -79,11 +89,17 @@ public class BattleUIButtonController : MonoBehaviour
         if (qteButton != null)
             qteButton.onClick.AddListener(() => TriggerQTE());
         
-        // Subscribe to Input System actions
-        EnableInputActions();
+        // NOTE: Input action listeners removed - now handled by BattleInputManager
+        // We only keep InputActionReferences for icon display purposes
         
         // Subscribe to timing window events
         SubscribeToTimingWindows();
+        
+        // Subscribe to BattleInputManager state changes (NEW)
+        if (inputManager != null)
+        {
+            inputManager.OnInputStateChanged += HandleInputStateChanged;
+        }
         
         // Subscribe to device changes for icon updates
         if (showInputIcons && InputIconMapper.Instance != null)
@@ -119,8 +135,13 @@ public class BattleUIButtonController : MonoBehaviour
         if (qteButton != null)
             qteButton.onClick.RemoveAllListeners();
         
-        // Unsubscribe from Input System actions
-        DisableInputActions();
+        // NOTE: Input action unsubscription removed - handled by BattleInputManager
+        
+        // Unsubscribe from BattleInputManager
+        if (inputManager != null)
+        {
+            inputManager.OnInputStateChanged -= HandleInputStateChanged;
+        }
         
         // Unsubscribe from timing window events
         UnsubscribeFromTimingWindows();
@@ -181,140 +202,39 @@ public class BattleUIButtonController : MonoBehaviour
         SetButtonVisible(skill2Button, visible);
     }
     
-    #region Input Action Handlers
-    
-    private void EnableInputActions()
+    /// <summary>
+    /// Handle input state changes from BattleInputManager (NEW)
+    /// </summary>
+    private void HandleInputStateChanged(BattleInputState newState)
     {
-        if (lightAttackAction != null && lightAttackAction.action != null)
+        switch (newState)
         {
-            lightAttackAction.action.performed += OnLightAttackInput;
-            lightAttackAction.action.Enable();
+            case BattleInputState.PlayerTurn:
+                EnableInput();
+                break;
+                
+            case BattleInputState.Disabled:
+            case BattleInputState.ExecutingAction:
+                DisableInput();
+                break;
+                
+            case BattleInputState.ParryWindow:
+            case BattleInputState.QTEWindow:
+                // Timing windows have their own button visibility
+                DisableInput();
+                break;
         }
         
-        if (heavyAttackAction != null && heavyAttackAction.action != null)
+        if (debugMode)
         {
-            heavyAttackAction.action.performed += OnHeavyAttackInput;
-            heavyAttackAction.action.Enable();
-        }
-        
-        if (skill1Action != null && skill1Action.action != null)
-        {
-            skill1Action.action.performed += OnSkill1Input;
-            skill1Action.action.Enable();
-        }
-        
-        if (skill2Action != null && skill2Action.action != null)
-        {
-            skill2Action.action.performed += OnSkill2Input;
-            skill2Action.action.Enable();
-        }
-        
-        if (parryAction != null && parryAction.action != null)
-        {
-            parryAction.action.performed += OnParryInput;
-            parryAction.action.Enable();
-        }
-        
-        if (qteAction != null && qteAction.action != null)
-        {
-            qteAction.action.performed += OnQTEInput;
-            qteAction.action.Enable();
+            Debug.Log($"[BattleUIButtons] Input state changed to: {newState}");
         }
     }
     
-    private void DisableInputActions()
-    {
-        if (lightAttackAction != null && lightAttackAction.action != null)
-        {
-            lightAttackAction.action.performed -= OnLightAttackInput;
-            lightAttackAction.action.Disable();
-        }
-        
-        if (heavyAttackAction != null && heavyAttackAction.action != null)
-        {
-            heavyAttackAction.action.performed -= OnHeavyAttackInput;
-            heavyAttackAction.action.Disable();
-        }
-        
-        if (skill1Action != null && skill1Action.action != null)
-        {
-            skill1Action.action.performed -= OnSkill1Input;
-            skill1Action.action.Disable();
-        }
-        
-        if (skill2Action != null && skill2Action.action != null)
-        {
-            skill2Action.action.performed -= OnSkill2Input;
-            skill2Action.action.Disable();
-        }
-        
-        if (parryAction != null && parryAction.action != null)
-        {
-            parryAction.action.performed -= OnParryInput;
-            parryAction.action.Disable();
-        }
-        
-        if (qteAction != null && qteAction.action != null)
-        {
-            qteAction.action.performed -= OnQTEInput;
-            qteAction.action.Disable();
-        }
-    }
+    #region Input Action Handlers (REMOVED - Now handled by BattleInputManager)
     
-    // Input System callbacks - trigger the same actions as button clicks
-    private void OnLightAttackInput(UnityEngine.InputSystem.InputAction.CallbackContext context)
-    {
-        if (isInputEnabled)
-        {
-            TriggerLightAttack();
-            AnimateButtonPress(lightAttackButton);
-        }
-    }
-    
-    private void OnHeavyAttackInput(UnityEngine.InputSystem.InputAction.CallbackContext context)
-    {
-        if (isInputEnabled)
-        {
-            TriggerHeavyAttack();
-            AnimateButtonPress(heavyAttackButton);
-        }
-    }
-    
-    private void OnSkill1Input(UnityEngine.InputSystem.InputAction.CallbackContext context)
-    {
-        if (isInputEnabled)
-        {
-            TriggerSkill1();
-            AnimateButtonPress(skill1Button);
-        }
-    }
-    
-    private void OnSkill2Input(UnityEngine.InputSystem.InputAction.CallbackContext context)
-    {
-        if (isInputEnabled)
-        {
-            TriggerSkill2();
-            AnimateButtonPress(skill2Button);
-        }
-    }
-    
-    private void OnParryInput(UnityEngine.InputSystem.InputAction.CallbackContext context)
-    {
-        if (isParryWindowActive)
-        {
-            TriggerParry();
-            AnimateButtonPress(parryButton);
-        }
-    }
-    
-    private void OnQTEInput(UnityEngine.InputSystem.InputAction.CallbackContext context)
-    {
-        if (isQTEWindowActive)
-        {
-            TriggerQTE();
-            AnimateButtonPress(qteButton);
-        }
-    }
+    // These methods have been removed as input is now centralized in BattleInputManager
+    // InputActionReferences are kept only for icon display purposes
     
     #endregion
     
@@ -406,10 +326,19 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log("[BattleUIButtons] Light Attack triggered");
+            Debug.Log("[BattleUIButtons] Light Attack button clicked");
         }
         
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerLightAttack();
+        }
+        
+        // Legacy event for backward compatibility (will be removed)
+        #pragma warning disable CS0618 // Type or member is obsolete
         OnLightAttackPressed?.Invoke();
+        #pragma warning restore CS0618
     }
     
     private void TriggerHeavyAttack()
@@ -418,10 +347,19 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log("[BattleUIButtons] Heavy Attack triggered");
+            Debug.Log("[BattleUIButtons] Heavy Attack button clicked");
         }
         
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerHeavyAttack();
+        }
+        
+        // Legacy event for backward compatibility (will be removed)
+        #pragma warning disable CS0618 // Type or member is obsolete
         OnHeavyAttackPressed?.Invoke();
+        #pragma warning restore CS0618
     }
     
     private void TriggerSkill1()
@@ -430,10 +368,19 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log("[BattleUIButtons] Skill 1 triggered");
+            Debug.Log("[BattleUIButtons] Skill 1 button clicked");
         }
         
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerSkill1();
+        }
+        
+        // Legacy event for backward compatibility (will be removed)
+        #pragma warning disable CS0618 // Type or member is obsolete
         OnSkill1Pressed?.Invoke();
+        #pragma warning restore CS0618
     }
     
     private void TriggerSkill2()
@@ -442,10 +389,19 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log("[BattleUIButtons] Skill 2 triggered");
+            Debug.Log("[BattleUIButtons] Skill 2 button clicked");
         }
         
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerSkill2();
+        }
+        
+        // Legacy event for backward compatibility (will be removed)
+        #pragma warning disable CS0618 // Type or member is obsolete
         OnSkill2Pressed?.Invoke();
+        #pragma warning restore CS0618
     }
     
     private void TriggerParry()
@@ -454,10 +410,19 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log("[BattleUIButtons] Parry triggered");
+            Debug.Log("[BattleUIButtons] Parry button clicked");
         }
         
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerParry();
+        }
+        
+        // Legacy event for backward compatibility (will be removed)
+        #pragma warning disable CS0618 // Type or member is obsolete
         OnParryPressed?.Invoke();
+        #pragma warning restore CS0618
     }
     
     private void TriggerQTE()
@@ -466,10 +431,19 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log("[BattleUIButtons] QTE triggered");
+            Debug.Log("[BattleUIButtons] QTE button clicked");
         }
         
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerQTE();
+        }
+        
+        // Legacy event for backward compatibility (will be removed)
+        #pragma warning disable CS0618 // Type or member is obsolete
         OnQTEPressed?.Invoke();
+        #pragma warning restore CS0618
     }
     
     #endregion

@@ -3,9 +3,17 @@ using UnityEngine.InputSystem;
 using System;
 
 /// <summary>
+/// DEPRECATED: This class has been replaced by BattleInputManager
 /// Handles battle input and triggers appropriate battle actions
 /// Reads direct input from keyboard/gamepad instead of relying on UI
+/// 
+/// MIGRATION NOTE:
+/// - Use BattleInputManager instead for centralized input handling
+/// - BattleInputManager supports InputActionReferences (better Inspector integration)
+/// - BattleInputManager handles parry/QTE input coordination
+/// - BattleInputManager provides state-based input validation
 /// </summary>
+[System.Obsolete("This class is deprecated. Use BattleInputManager for centralized input handling.")]
 public class BattleInputHandler : MonoBehaviour
 {
     [Header("Input Actions")]

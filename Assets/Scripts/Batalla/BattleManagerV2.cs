@@ -18,6 +18,7 @@ public class BattleManagerV2 : MonoBehaviour
     [SerializeField] private AnimationSequencer playerAnimationSequencer;
     [SerializeField] private QTEManager qteManager;
     [SerializeField] private ParrySystem parrySystem;
+    [SerializeField] private BattleInputManager inputManager; // NEW: Centralized input handling
 
     [Header("Player Movement")]
     [SerializeField] private MovimientoV2 playerMovement;
@@ -65,6 +66,17 @@ public class BattleManagerV2 : MonoBehaviour
     // MODIFICAR el método Start() para que NO inicie automáticamente:
     private void Start()
     {
+        // Subscribe to BattleInputManager events (NEW)
+        if (inputManager != null)
+        {
+            inputManager.OnLightAttackRequested += HandleInputLightAttack;
+            inputManager.OnHeavyAttackRequested += HandleInputHeavyAttack;
+            inputManager.OnSkill1Requested += HandleInputSkill1;
+            inputManager.OnSkill2Requested += HandleInputSkill2;
+            inputManager.OnEndTurnRequested += HandleInputEndTurn;
+            // Note: Parry and QTE are handled directly by inputManager routing to systems
+        }
+        
         // Subscribe to ParrySystem events
         if (parrySystem != null)
         {
@@ -74,13 +86,19 @@ public class BattleManagerV2 : MonoBehaviour
             parrySystem.OnParryFail += HandleParryFail;
         }
         
-        // Subscribe to UI button events
+        // Subscribe to QTEManager events (NEW - for input state coordination)
+        if (qteManager != null)
+        {
+            qteManager.OnQTEWindowStart += HandleQTEWindowStateChanged;
+            qteManager.OnQTEWindowEnd += HandleQTEWindowEnd;
+        }
+        
+        // Subscribe to UI button events (DEPRECATED - now handled by inputManager)
+        // Keeping for backward compatibility during transition
         if (uiButtonController != null)
         {
-            uiButtonController.OnLightAttackPressed += HandleUILightAttackPressed;
-            uiButtonController.OnHeavyAttackPressed += HandleUIHeavyAttackPressed;
-            uiButtonController.OnSkill1Pressed += HandleUISkill1Pressed;
-            uiButtonController.OnSkill2Pressed += HandleUISkill2Pressed;
+            // Note: UI buttons should now call inputManager methods instead
+            // These handlers will be removed once BattleUIButtonController is updated
             
             // Initially disable buttons until battle starts
             uiButtonController.DisableInput();
@@ -274,11 +292,17 @@ public class BattleManagerV2 : MonoBehaviour
         {
             case PlayerTurnState.SelectingAction:
                 ShowActionSelectionUI();
+                // Enable player turn input
+                if (inputManager != null)
+                {
+                    inputManager.SetInputState(BattleInputState.PlayerTurn);
+                }
                 break;
 
             case PlayerTurnState.ExecutingAttack:
             case PlayerTurnState.ExecutingSkill:
                 HideActionSelectionUI();
+                // Input state already set by input handlers
                 break;
         }
     }
@@ -379,13 +403,13 @@ public class BattleManagerV2 : MonoBehaviour
         // Return to action selection or wait for player to end turn
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
-    
-    #region UI Button Event Handlers
+
+    #region Input Manager Event Handlers (NEW - Centralized Input)
     
     /// <summary>
-    /// Called when light attack button is pressed (UI click or controller input)
+    /// Handle light attack input from BattleInputManager
     /// </summary>
-    private void HandleUILightAttackPressed()
+    private void HandleInputLightAttack()
     {
         if (CurrentState != BattleState.PlayerTurn) return;
         
@@ -395,7 +419,13 @@ public class BattleManagerV2 : MonoBehaviour
             return;
         }
         
-        Debug.Log("Light Attack button pressed");
+        Debug.Log("[Input] Light Attack requested");
+        
+        // Update input state
+        if (inputManager != null)
+        {
+            inputManager.SetInputState(BattleInputState.ExecutingAction);
+        }
         
         // Disable UI while executing
         if (uiButtonController != null)
@@ -404,15 +434,13 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
-        
-        // Execute light attack
         playerController.ExecuteLightAttack(enemyController.Character);
     }
     
     /// <summary>
-    /// Called when heavy attack button is pressed (UI click or controller input)
+    /// Handle heavy attack input from BattleInputManager
     /// </summary>
-    private void HandleUIHeavyAttackPressed()
+    private void HandleInputHeavyAttack()
     {
         if (CurrentState != BattleState.PlayerTurn) return;
         
@@ -422,7 +450,13 @@ public class BattleManagerV2 : MonoBehaviour
             return;
         }
         
-        Debug.Log("Heavy Attack button pressed");
+        Debug.Log("[Input] Heavy Attack requested");
+        
+        // Update input state
+        if (inputManager != null)
+        {
+            inputManager.SetInputState(BattleInputState.ExecutingAction);
+        }
         
         // Disable UI while executing
         if (uiButtonController != null)
@@ -431,25 +465,29 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
-        
-        // Execute heavy attack
         playerController.ExecuteHeavyAttack(enemyController.Character);
     }
     
     /// <summary>
-    /// Called when skill 1 button is pressed (UI click or controller input)
+    /// Handle skill 1 input from BattleInputManager
     /// </summary>
-    private void HandleUISkill1Pressed()
+    private void HandleInputSkill1()
     {
         if (CurrentState != BattleState.PlayerTurn) return;
         
         if (!playerController.CanPerformAction(ActionType.Skill))
         {
-            Debug.LogWarning("Cannot perform skill - insufficient resources");
+            Debug.LogWarning("Cannot perform skill 1 - insufficient resources");
             return;
         }
         
-        Debug.Log("Skill 1 button pressed");
+        Debug.Log("[Input] Skill 1 requested");
+        
+        // Update input state
+        if (inputManager != null)
+        {
+            inputManager.SetInputState(BattleInputState.ExecutingAction);
+        }
         
         // Disable UI while executing
         if (uiButtonController != null)
@@ -458,25 +496,29 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingSkill);
-        
-        // Execute skill 1 (index 0)
         playerController.ExecuteSkill(0, enemyController.Character);
     }
     
     /// <summary>
-    /// Called when skill 2 button is pressed (UI click or controller input)
+    /// Handle skill 2 input from BattleInputManager
     /// </summary>
-    private void HandleUISkill2Pressed()
+    private void HandleInputSkill2()
     {
         if (CurrentState != BattleState.PlayerTurn) return;
         
         if (!playerController.CanPerformAction(ActionType.Skill))
         {
-            Debug.LogWarning("Cannot perform skill - insufficient resources");
+            Debug.LogWarning("Cannot perform skill 2 - insufficient resources");
             return;
         }
         
-        Debug.Log("Skill 2 button pressed");
+        Debug.Log("[Input] Skill 2 requested");
+        
+        // Update input state
+        if (inputManager != null)
+        {
+            inputManager.SetInputState(BattleInputState.ExecutingAction);
+        }
         
         // Disable UI while executing
         if (uiButtonController != null)
@@ -485,9 +527,30 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingSkill);
-        
-        // Execute skill 2 (index 1)
         playerController.ExecuteSkill(1, enemyController.Character);
+    }
+    
+    /// <summary>
+    /// Handle end turn input from BattleInputManager
+    /// </summary>
+    private void HandleInputEndTurn()
+    {
+        if (CurrentState != BattleState.PlayerTurn) return;
+        
+        Debug.Log("[Input] End Turn requested");
+        
+        // Disable input
+        if (inputManager != null)
+        {
+            inputManager.SetInputState(BattleInputState.Disabled);
+        }
+        
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+        }
+        
+        turnManager.EndPlayerTurn();
     }
     
     #endregion
@@ -752,15 +815,6 @@ public class BattleManagerV2 : MonoBehaviour
             parrySystem.OnParrySuccessWithTiming -= HandleParrySuccessWithTiming;
             parrySystem.OnParryFail -= HandleParryFail;
         }
-        
-        // Unsubscribe from UI button events
-        if (uiButtonController != null)
-        {
-            uiButtonController.OnLightAttackPressed -= HandleUILightAttackPressed;
-            uiButtonController.OnHeavyAttackPressed -= HandleUIHeavyAttackPressed;
-            uiButtonController.OnSkill1Pressed -= HandleUISkill1Pressed;
-            uiButtonController.OnSkill2Pressed -= HandleUISkill2Pressed;
-        }
     }
 
     private void OnDestroy()
@@ -803,6 +857,13 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParryWindowStateChanged(bool isActive)
     {
+        // Notify BattleInputManager about parry window state
+        if (inputManager != null)
+        {
+            inputManager.SetParryWindowActive(isActive);
+        }
+        
+        // Visual feedback
         if (isActive)
         {
             CreateParryIndicator();
@@ -810,6 +871,32 @@ public class BattleManagerV2 : MonoBehaviour
         else
         {
             DestroyParryIndicator();
+        }
+    }
+    
+    /// <summary>
+    /// Handle QTE window state changes from QTEManager (NEW)
+    /// </summary>
+    private void HandleQTEWindowStateChanged(bool isActive)
+    {
+        // Notify BattleInputManager about QTE window state
+        if (inputManager != null)
+        {
+            inputManager.SetQTEWindowActive(isActive);
+        }
+        
+        Debug.Log($"QTE Window: {(isActive ? "OPEN" : "CLOSED")}");
+    }
+    
+    /// <summary>
+    /// Handle QTE window ending (NEW)
+    /// </summary>
+    private void HandleQTEWindowEnd()
+    {
+        // Return to previous state (likely ExecutingAction)
+        if (inputManager != null && CurrentState == BattleState.PlayerTurn)
+        {
+            inputManager.SetInputState(BattleInputState.ExecutingAction);
         }
     }
 

@@ -27,38 +27,39 @@ public class ParrySystem : MonoBehaviour
     public bool IsParryWindowActive => isParryWindowActive;
     public float StaminaReward => staminaRewardOnSuccessfulParry;
 
-    private void OnEnable()
-    {
-        if (parryInputAction != null)
-        {
-            parryInputAction.action.Enable();
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (parryInputAction != null)
-        {
-            parryInputAction.action.Disable();
-        }
-    }
+    // NOTE: Input checking removed - now handled by BattleInputManager
+    // BattleInputManager will call ProcessParryInput() when parry button is pressed
 
     private void Update()
     {
         if (!isParryWindowActive) return;
 
-        // Check for parry input
-        if (parryInputAction != null && parryInputAction.action != null &&
-            parryInputAction.action.WasPressedThisFrame() && !parryAttempted)
-        {
-            CheckParryTiming();
-        }
-
-        // Close window after duration
+        // Close window after duration (time-based expiration still handled here)
         if (Time.time >= parryWindowStartTime + parryWindowDuration)
         {
             CloseParryWindow();
         }
+    }
+    
+    /// <summary>
+    /// Process parry input from BattleInputManager
+    /// Called when player presses parry button during parry window
+    /// </summary>
+    public void ProcessParryInput()
+    {
+        if (!isParryWindowActive)
+        {
+            Debug.LogWarning("[ParrySystem] ProcessParryInput called but window is not active!");
+            return;
+        }
+        
+        if (parryAttempted)
+        {
+            Debug.LogWarning("[ParrySystem] Parry already attempted in this window!");
+            return;
+        }
+        
+        CheckParryTiming();
     }
 
     /// <summary>

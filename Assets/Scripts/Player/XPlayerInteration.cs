@@ -90,7 +90,7 @@ public class XPlayerInteraction : MonoBehaviour
                         // Fallback if InputIconMapper not available
                         if (isUsingGamepad)
                         {
-                            promptText.text = "[Y] Interactuar";
+                            promptText.text = "[X] Interactuar";
                         }
                         else
                         {

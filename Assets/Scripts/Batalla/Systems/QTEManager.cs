@@ -28,38 +28,39 @@ public class QTEManager : MonoBehaviour
     public bool IsQTEActive => isQTEActive;
     public float CurrentQTEDuration => qteWindowDuration; // Expose duration for UI
     
-    private void OnEnable()
-    {
-        if (qteInputAction != null)
-        {
-            qteInputAction.action.Enable();
-        }
-    }
-    
-    private void OnDisable()
-    {
-        if (qteInputAction != null)
-        {
-            qteInputAction.action.Disable();
-        }
-    }
+    // NOTE: Input checking removed - now handled by BattleInputManager
+    // BattleInputManager will call ProcessQTEInput() when QTE button is pressed
     
     private void Update()
     {
         if (!isQTEActive) return;
         
-        // Check for input
-        if (qteInputAction != null && qteInputAction.action != null && 
-            qteInputAction.action.WasPressedThisFrame() && !qteCompleted)
-        {
-            CheckQTETiming();
-        }
-        
-        // Check if window expired
+        // Check if window expired (time-based expiration still handled here)
         if (Time.time >= qteStartTime + qteWindowDuration && !qteCompleted)
         {
             FailQTE();
         }
+    }
+    
+    /// <summary>
+    /// Process QTE input from BattleInputManager
+    /// Called when player presses QTE button during QTE window
+    /// </summary>
+    public void ProcessQTEInput()
+    {
+        if (!isQTEActive)
+        {
+            Debug.LogWarning("[QTEManager] ProcessQTEInput called but QTE is not active!");
+            return;
+        }
+        
+        if (qteCompleted)
+        {
+            Debug.LogWarning("[QTEManager] QTE already completed!");
+            return;
+        }
+        
+        CheckQTETiming();
     }
     
     /// <summary>
