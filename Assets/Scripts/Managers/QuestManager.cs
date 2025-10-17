@@ -11,12 +11,10 @@ public class QuestManager : MonoBehaviour
     [SerializeField] private Decision initialMerchantDialogue; 
     [SerializeField] private Decision thiefPostCombatDecision;     
     [SerializeField] private Decision finalMerchantDecision;       
-    [SerializeField] private GameObject thiefPrefab;               
-    [SerializeField] private Transform thiefSpawnPoint;            
+    [SerializeField] private GameObject thiefEnemy; // Pre-placed enemy GameObject (disabled by default)
     [SerializeField] private GameObject merchantNPC;               
     
     private RobberyQuestState currentQuestState = RobberyQuestState.NotStarted;
-    private GameObject spawnedThief; 
     private bool callbacksRegistered = false;
     private BattleManagerV2 activeBattleManager;
     
@@ -100,7 +98,7 @@ public class QuestManager : MonoBehaviour
         Debug.Log("<color=green>PlayerAcceptedHelp EJECUTADO!</color>");
         InteractionManager.Instance.EndInteraction();
         UpdateQuestState(RobberyQuestState.CombatActive);
-        SpawnThiefAndStartCombat();
+        EnableThiefEnemy();
     }
 
     public void PlayerDeclinedHelp()
@@ -111,61 +109,71 @@ public class QuestManager : MonoBehaviour
     }
 
 
-   private void SpawnThiefAndStartCombat()
-{
-    if (thiefPrefab != null && thiefSpawnPoint != null)
-    {
-        spawnedThief = Instantiate(thiefPrefab, thiefSpawnPoint.position, thiefSpawnPoint.rotation);
-        
-        // Desactivar BattleTrigger hasta que el jugador se acerque
-        BattleTrigger battleTrigger = spawnedThief.GetComponent<BattleTrigger>();
-        if (battleTrigger != null)
-        {
-            battleTrigger.enabled = false;
-        }
-        
-        // Añadir el detector de proximidad
-        ThiefProximityDetector detector = spawnedThief.GetComponent<ThiefProximityDetector>();
-        if (detector == null)
-        {
-            detector = spawnedThief.AddComponent<ThiefProximityDetector>();
-            Debug.Log("<color=cyan>ThiefProximityDetector añadido automáticamente al ladrón.</color>");
-        }
-        
-        // Find and subscribe to the BattleManagerV2 on the spawned thief
-        activeBattleManager = spawnedThief.GetComponentInChildren<BattleManagerV2>();
-        if (activeBattleManager != null)
-        {
-            activeBattleManager.OnBattleEnded += HandleThiefBattleEnded;
-            Debug.Log("<color=green>Subscribed to thief battle events</color>");
-        }
-        else
-        {
-            Debug.LogError("BattleManagerV2 not found on spawned thief!");
-        }
-        
-        Debug.Log("¡Ladrón aparecido! Acércate para iniciar el combate.");
-    }
-    else
-    {
-        Debug.LogError("Prefab del ladrón o punto de spawn no asignados en QuestManager.");
-        UpdateQuestState(RobberyQuestState.NotStarted);
-    }
-}
+   /// <summary>
+   /// Enable the pre-placed thief enemy GameObject
+   /// </summary>
+   private void EnableThiefEnemy()
+   {
+       if (thiefEnemy == null)
+       {
+           Debug.LogError("Thief enemy GameObject not assigned in QuestManager!");
+           UpdateQuestState(RobberyQuestState.NotStarted);
+           return;
+       }
+       
+       // Enable the enemy GameObject
+       thiefEnemy.SetActive(true);
+       
+       // Get BattleTrigger component
+       BattleTrigger battleTrigger = thiefEnemy.GetComponentInChildren<BattleTrigger>();
+       if (battleTrigger != null)
+       {
+           // Enable trigger immediately so player can approach and start battle
+           battleTrigger.SetTriggerActive(true);
+           
+           // Subscribe to battle end via BattleManager
+           BattleManagerV2 battleManager = FindFirstObjectByType<BattleManagerV2>();
+           if (battleManager != null)
+           {
+               activeBattleManager = battleManager;
+               activeBattleManager.OnBattleEnded += HandleThiefBattleEnded;
+               Debug.Log("<color=green>Subscribed to BattleManager.OnBattleEnded</color>");
+           }
+           else
+           {
+               Debug.LogError("BattleManagerV2 not found in scene!");
+           }
+           
+           Debug.Log("<color=cyan>¡Ladrón habilitado! Acércate para iniciar el combate.</color>");
+       }
+       else
+       {
+           Debug.LogError("BattleTrigger not found on thief enemy! Add BattleTrigger component to thief GameObject.");
+           UpdateQuestState(RobberyQuestState.NotStarted);
+       }
+   }
 
   public void StartThiefCombat()
 {
-    Debug.Log($"<color=cyan>StartThiefCombat llamado. Estado actual: {currentQuestState}</color>");
+    Debug.Log($"<color=cyan>StartThiefCombat called. Current state: {currentQuestState}</color>");
     
-    if (currentQuestState == RobberyQuestState.CombatActive && spawnedThief != null)
+    if (currentQuestState == RobberyQuestState.CombatActive && thiefEnemy != null)
     {
-        Debug.Log("¡Iniciando combate con el ladrón!");
-        
-        
+        BattleTrigger battleTrigger = thiefEnemy.GetComponentInChildren<BattleTrigger>();
+        if (battleTrigger != null)
+        {
+            // Enable trigger so player can enter and start battle
+            battleTrigger.SetTriggerActive(true);
+            Debug.Log("<color=green>Battle trigger enabled! Player can now approach to start combat.</color>");
+        }
+        else
+        {
+            Debug.LogError("BattleTrigger not found on thief enemy!");
+        }
     }
     else
     {
-        Debug.LogWarning($"No se puede iniciar combate. Estado: {currentQuestState}, Thief: {spawnedThief != null}");
+        Debug.LogWarning($"Cannot start combat. State: {currentQuestState}, Thief enemy assigned: {thiefEnemy != null}");
     }
 }
     
@@ -182,14 +190,23 @@ public class QuestManager : MonoBehaviour
         if (playerWon)
         {
             Debug.Log("Combate con el ladrón terminado. ¡Victoria!");
-            if (spawnedThief != null) Destroy(spawnedThief);
-
+            
+            // Note: BattleTrigger will destroy the enemy automatically if destroyOnBattleEnd=true
+            // If it's not being destroyed automatically, the enemy GameObject stays disabled
+            
             UpdateQuestState(RobberyQuestState.PostCombatDecision);
             InteractionManager.Instance.StartInteraction(thiefPostCombatDecision);
         }
         else
         {
             Debug.Log("Combate con el ladrón terminado. Derrota.");
+            
+            // On defeat, disable the enemy so player can retry
+            if (thiefEnemy != null && thiefEnemy.activeInHierarchy)
+            {
+                thiefEnemy.SetActive(false);
+            }
+            
             UpdateQuestState(RobberyQuestState.NotStarted);
         }
     }
@@ -240,6 +257,7 @@ public class QuestManager : MonoBehaviour
         
         if (currentQuestState == RobberyQuestState.ReturnToMerchant)
         {
+            // Player completed combat and returned to merchant
             if (finalMerchantDecision != null)
             {
                 Debug.Log("<color=green>Mostrando diálogo final del mercader</color>");
@@ -252,12 +270,32 @@ public class QuestManager : MonoBehaviour
         }
         else if (currentQuestState == RobberyQuestState.NotStarted)
         {
+            // Quest hasn't started yet - show initial dialogue
             Debug.Log("<color=yellow>Mostrando diálogo inicial del mercader</color>");
             StartRobberyQuest();
         }
+        else if (currentQuestState == RobberyQuestState.CombatActive || 
+                 currentQuestState == RobberyQuestState.DialogueIntro)
+        {
+            // Player is in middle of quest (combat hasn't finished yet)
+            // Show a reminder message
+            Debug.Log("<color=yellow>Mercader dice: 'Ve a buscar al ladrón! Está por allí...'</color>");
+            // Optionally, you could show a simple conversation here reminding the player of their task
+        }
+        else if (currentQuestState == RobberyQuestState.PostCombatDecision)
+        {
+            // Player defeated thief but hasn't made forgive/kill decision yet
+            Debug.Log("<color=yellow>Mercader dice: '¿Qué hiciste con el ladrón?'</color>");
+            // Player should go back to the thief's location, not the merchant
+        }
+        else if (currentQuestState == RobberyQuestState.Completed)
+        {
+            // Quest already completed
+            Debug.Log("<color=cyan>Mercader dice: 'Gracias de nuevo por tu ayuda, samurai.'</color>");
+        }
         else
         {
-            Debug.LogWarning($"El jugador intentó hablar con el mercader en un estado incorrecto: {currentQuestState}");
+            Debug.LogWarning($"Estado de misión no manejado: {currentQuestState}");
         }
     }
 

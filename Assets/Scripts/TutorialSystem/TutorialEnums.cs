@@ -46,5 +46,8 @@ public enum InputAction
     HeavyAttack,
     Skill1,
     Skill2,
-    EndTurn
+    EndTurn,
+    // Dialogue choice buttons
+    Choice1,  // Q on keyboard, X on Xbox
+    Choice2   // R on keyboard, B on Xbox
 }

@@ -12,7 +12,7 @@ public class BattleManagerV2 : MonoBehaviour
 {
     [Header("Battle Participants")]
     [SerializeField] private PlayerBattleController playerController;
-    [SerializeField] private EnemyBattleController enemyController;
+    [SerializeField] private EnemyBattleController enemyController; // Optional: can be set dynamically via StartBattleWithEnemy()
 
     [Header("Systems")]
     [SerializeField] private AnimationSequencer playerAnimationSequencer;
@@ -22,8 +22,9 @@ public class BattleManagerV2 : MonoBehaviour
     [Header("Player Movement")]
     [SerializeField] private MovimientoV2 playerMovement;
 
-    [Header("UI (Optional)")]
-    [SerializeField] private GameObject actionSelectionUI;
+    [Header("UI")]
+    [SerializeField] private BattleUIButtonController uiButtonController;
+    [SerializeField] private GameObject actionSelectionUI; // Optional legacy UI
 
     [Header("Camera")]
     [SerializeField] private ThirdPersonJRPGCamera battleCamera;
@@ -64,13 +65,26 @@ public class BattleManagerV2 : MonoBehaviour
     // MODIFICAR el método Start() para que NO inicie automáticamente:
     private void Start()
     {
-        // Solo suscribirse a eventos del ParrySystem, NO inicializar batalla
+        // Subscribe to ParrySystem events
         if (parrySystem != null)
         {
             parrySystem.OnParryWindowActive += HandleParryWindowStateChanged;
             parrySystem.OnParrySuccess += HandleParrySuccess;
             parrySystem.OnParrySuccessWithTiming += HandleParrySuccessWithTiming;
             parrySystem.OnParryFail += HandleParryFail;
+        }
+        
+        // Subscribe to UI button events
+        if (uiButtonController != null)
+        {
+            uiButtonController.OnLightAttackPressed += HandleUILightAttackPressed;
+            uiButtonController.OnHeavyAttackPressed += HandleUIHeavyAttackPressed;
+            uiButtonController.OnSkill1Pressed += HandleUISkill1Pressed;
+            uiButtonController.OnSkill2Pressed += HandleUISkill2Pressed;
+            
+            // Initially disable buttons until battle starts
+            uiButtonController.DisableInput();
+            uiButtonController.SetButtonsVisible(false);
         }
     }
 
@@ -165,11 +179,12 @@ public class BattleManagerV2 : MonoBehaviour
     // AGREGAR nuevo método público que recibe el enemigo específico:
     /// <summary>
     /// Inicia la batalla con un enemigo específico
+    /// This is the RECOMMENDED way to start battles with dynamically spawned enemies
     /// </summary>
     public void StartBattleWithEnemy(EnemyBattleController specificEnemy)
     {
         // VERIFICAR estado actual
-        if (battleResult != BattleResult.None)
+        if (battleResult != BattleResult.None && turnManager != null)
         {
             Debug.LogWarning($"Battle already in progress or finished! Current result: {battleResult}");
             return;
@@ -184,7 +199,7 @@ public class BattleManagerV2 : MonoBehaviour
 
         // ASIGNAR el enemigo específico que activó el trigger
         enemyController = specificEnemy;
-        Debug.Log($"Battle started with specific enemy: {enemyController.name}");
+        Debug.Log($"<color=cyan>Battle started with specific enemy: {enemyController.name}</color>");
 
         // FORZAR reset del resultado de batalla
         battleResult = BattleResult.None;
@@ -284,6 +299,13 @@ public class BattleManagerV2 : MonoBehaviour
 
         // Actualizar display de turno
         UpdateTurnDisplayUI("PLAYER TURN");
+        
+        // Enable UI buttons for player input
+        if (uiButtonController != null)
+        {
+            uiButtonController.EnableInput();
+            uiButtonController.SetButtonsVisible(true);
+        }
 
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
@@ -339,6 +361,12 @@ public class BattleManagerV2 : MonoBehaviour
     {
         Debug.Log("Player action complete");
 
+        // Disable UI buttons during action execution
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+        }
+
         // Actualizar UI de vida después de la acción del jugador
         UpdateHealthUI();
 
@@ -351,6 +379,118 @@ public class BattleManagerV2 : MonoBehaviour
         // Return to action selection or wait for player to end turn
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
+    
+    #region UI Button Event Handlers
+    
+    /// <summary>
+    /// Called when light attack button is pressed (UI click or controller input)
+    /// </summary>
+    private void HandleUILightAttackPressed()
+    {
+        if (CurrentState != BattleState.PlayerTurn) return;
+        
+        if (!playerController.CanPerformAction(ActionType.LightAttack))
+        {
+            Debug.LogWarning("Cannot perform light attack - insufficient resources");
+            return;
+        }
+        
+        Debug.Log("Light Attack button pressed");
+        
+        // Disable UI while executing
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+        }
+        
+        turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
+        
+        // Execute light attack
+        playerController.ExecuteLightAttack(enemyController.Character);
+    }
+    
+    /// <summary>
+    /// Called when heavy attack button is pressed (UI click or controller input)
+    /// </summary>
+    private void HandleUIHeavyAttackPressed()
+    {
+        if (CurrentState != BattleState.PlayerTurn) return;
+        
+        if (!playerController.CanPerformAction(ActionType.HeavyAttack))
+        {
+            Debug.LogWarning("Cannot perform heavy attack - insufficient resources");
+            return;
+        }
+        
+        Debug.Log("Heavy Attack button pressed");
+        
+        // Disable UI while executing
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+        }
+        
+        turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
+        
+        // Execute heavy attack
+        playerController.ExecuteHeavyAttack(enemyController.Character);
+    }
+    
+    /// <summary>
+    /// Called when skill 1 button is pressed (UI click or controller input)
+    /// </summary>
+    private void HandleUISkill1Pressed()
+    {
+        if (CurrentState != BattleState.PlayerTurn) return;
+        
+        if (!playerController.CanPerformAction(ActionType.Skill))
+        {
+            Debug.LogWarning("Cannot perform skill - insufficient resources");
+            return;
+        }
+        
+        Debug.Log("Skill 1 button pressed");
+        
+        // Disable UI while executing
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+        }
+        
+        turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingSkill);
+        
+        // Execute skill 1 (index 0)
+        playerController.ExecuteSkill(0, enemyController.Character);
+    }
+    
+    /// <summary>
+    /// Called when skill 2 button is pressed (UI click or controller input)
+    /// </summary>
+    private void HandleUISkill2Pressed()
+    {
+        if (CurrentState != BattleState.PlayerTurn) return;
+        
+        if (!playerController.CanPerformAction(ActionType.Skill))
+        {
+            Debug.LogWarning("Cannot perform skill - insufficient resources");
+            return;
+        }
+        
+        Debug.Log("Skill 2 button pressed");
+        
+        // Disable UI while executing
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+        }
+        
+        turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingSkill);
+        
+        // Execute skill 2 (index 1)
+        playerController.ExecuteSkill(1, enemyController.Character);
+    }
+    
+    #endregion
 
     #endregion
 
@@ -611,6 +751,15 @@ public class BattleManagerV2 : MonoBehaviour
             parrySystem.OnParrySuccess -= HandleParrySuccess;
             parrySystem.OnParrySuccessWithTiming -= HandleParrySuccessWithTiming;
             parrySystem.OnParryFail -= HandleParryFail;
+        }
+        
+        // Unsubscribe from UI button events
+        if (uiButtonController != null)
+        {
+            uiButtonController.OnLightAttackPressed -= HandleUILightAttackPressed;
+            uiButtonController.OnHeavyAttackPressed -= HandleUIHeavyAttackPressed;
+            uiButtonController.OnSkill1Pressed -= HandleUISkill1Pressed;
+            uiButtonController.OnSkill2Pressed -= HandleUISkill2Pressed;
         }
     }
 

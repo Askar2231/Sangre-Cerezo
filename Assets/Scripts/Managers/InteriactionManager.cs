@@ -93,9 +93,8 @@ public class InteractionManager : MonoBehaviour
             Button button = buttonGO.GetComponent<Button>();
             TextMeshProUGUI buttonText = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
 
-            string keyHint = ""; 
-            if (i == 0) keyHint = "[Q/X] "; 
-            else if (i == 1) keyHint = "[R/B] "; 
+            // Use InputIconMapper for dynamic button icons
+            string keyHint = GetChoiceButtonHint(i);
 
             buttonText.text = keyHint + choice.choiceText;
             buttonText.color = Color.black;  
@@ -103,6 +102,37 @@ public class InteractionManager : MonoBehaviour
             button.onClick.AddListener(() => SelectChoice(choice));
             currentChoiceButtons.Add(button);
         }
+    }
+
+    /// <summary>
+    /// Gets the button hint for a choice based on current input device.
+    /// Uses InputIconMapper to show keyboard/controller specific buttons.
+    /// </summary>
+    private string GetChoiceButtonHint(int choiceIndex)
+    {
+        if (InputIconMapper.Instance == null)
+        {
+            // Fallback if InputIconMapper not available
+            if (choiceIndex == 0) return "[Q/X] ";
+            else if (choiceIndex == 1) return "[R/B] ";
+            return "";
+        }
+
+        // Get device-specific button icon/text
+        if (choiceIndex == 0)
+        {
+            // Choice 1: Q on keyboard, X on Xbox controller
+            string iconText = InputIconMapper.Instance.GetSpriteOrText(InputAction.Choice1);
+            return iconText + " ";
+        }
+        else if (choiceIndex == 1)
+        {
+            // Choice 2: R on keyboard, B on Xbox controller
+            string iconText = InputIconMapper.Instance.GetSpriteOrText(InputAction.Choice2);
+            return iconText + " ";
+        }
+
+        return "";
     }
 
     /// <summary>

@@ -1,22 +1,16 @@
 using UnityEngine;
 using UnityEditor;
-using TMPro;
 using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
-/// Custom Editor for InputIconMapper that auto-generates TMP Sprite Assets
+/// Custom Editor for InputIconMapper that displays sprite name mappings
 /// </summary>
 [CustomEditor(typeof(InputIconMapper))]
 public class InputIconMapperEditor : Editor
 {
     private InputIconMapper mapper;
     private SerializedProperty debugModeProperty;
-    
-    // Sprite properties
-    private SerializedProperty[] keyboardSprites;
-    private SerializedProperty[] xboxSprites;
-    private SerializedProperty[] psSprites;
+    private SerializedProperty spriteNameMappingsProperty;
 
     private void OnEnable()
     {
@@ -24,57 +18,7 @@ public class InputIconMapperEditor : Editor
         
         // Get all serialized properties
         debugModeProperty = serializedObject.FindProperty("debugMode");
-        
-        // Keyboard sprites
-        keyboardSprites = new SerializedProperty[]
-        {
-            serializedObject.FindProperty("keyboardMove"),
-            serializedObject.FindProperty("keyboardRun"),
-            serializedObject.FindProperty("keyboardInteract"),
-            serializedObject.FindProperty("keyboardQTE"),
-            serializedObject.FindProperty("keyboardParry"),
-            serializedObject.FindProperty("keyboardConfirm"),
-            serializedObject.FindProperty("keyboardCancel"),
-            serializedObject.FindProperty("keyboardLightAttack"),
-            serializedObject.FindProperty("keyboardHeavyAttack"),
-            serializedObject.FindProperty("keyboardSkill1"),
-            serializedObject.FindProperty("keyboardSkill2"),
-            serializedObject.FindProperty("keyboardEndTurn"),
-        };
-        
-        // Xbox sprites
-        xboxSprites = new SerializedProperty[]
-        {
-            serializedObject.FindProperty("xboxMove"),
-            serializedObject.FindProperty("xboxRun"),
-            serializedObject.FindProperty("xboxInteract"),
-            serializedObject.FindProperty("xboxQTE"),
-            serializedObject.FindProperty("xboxParry"),
-            serializedObject.FindProperty("xboxConfirm"),
-            serializedObject.FindProperty("xboxCancel"),
-            serializedObject.FindProperty("xboxLightAttack"),
-            serializedObject.FindProperty("xboxHeavyAttack"),
-            serializedObject.FindProperty("xboxSkill1"),
-            serializedObject.FindProperty("xboxSkill2"),
-            serializedObject.FindProperty("xboxEndTurn"),
-        };
-        
-        // PlayStation sprites
-        psSprites = new SerializedProperty[]
-        {
-            serializedObject.FindProperty("psMove"),
-            serializedObject.FindProperty("psRun"),
-            serializedObject.FindProperty("psInteract"),
-            serializedObject.FindProperty("psQTE"),
-            serializedObject.FindProperty("psParry"),
-            serializedObject.FindProperty("psConfirm"),
-            serializedObject.FindProperty("psCancel"),
-            serializedObject.FindProperty("psLightAttack"),
-            serializedObject.FindProperty("psHeavyAttack"),
-            serializedObject.FindProperty("psSkill1"),
-            serializedObject.FindProperty("psSkill2"),
-            serializedObject.FindProperty("psEndTurn"),
-        };
+        spriteNameMappingsProperty = serializedObject.FindProperty("spriteNameMappings");
     }
 
     public override void OnInspectorGUI()
@@ -85,31 +29,9 @@ public class InputIconMapperEditor : Editor
         EditorGUILayout.Space(10);
         EditorGUILayout.LabelField("Input Icon Mapper", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
-            "Assign your input icon sprites below, then click 'Generate TMP Sprite Asset' to create a sprite asset for inline text icons.",
+            "Map input actions to sprite names for different device types. These sprite names should match the names in your TMP Sprite Asset.",
             MessageType.Info
         );
-        EditorGUILayout.Space(10);
-        
-        // Generate Asset Button
-        GUI.backgroundColor = Color.green;
-        if (GUILayout.Button("Generate TMP Sprite Asset", GUILayout.Height(40)))
-        {
-            GenerateSpriteAsset();
-        }
-        GUI.backgroundColor = Color.white;
-        
-        EditorGUILayout.Space(5);
-        
-        // Validation info
-        int totalAssigned = CountAssignedSprites();
-        int totalSprites = keyboardSprites.Length + xboxSprites.Length + psSprites.Length;
-        
-        string statusMessage = $"Sprites Assigned: {totalAssigned} / {totalSprites}";
-        MessageType statusType = totalAssigned == 0 ? MessageType.Warning : 
-                                 totalAssigned < totalSprites / 2 ? MessageType.Warning : 
-                                 MessageType.Info;
-        EditorGUILayout.HelpBox(statusMessage, statusType);
-        
         EditorGUILayout.Space(10);
         
         // Configuration
@@ -118,60 +40,90 @@ public class InputIconMapperEditor : Editor
         
         EditorGUILayout.Space(10);
         
-        // Sprite assignments with better organization
-        DrawSpriteSection("Keyboard Sprites", keyboardSprites);
-        DrawSpriteSection("Xbox Sprites", xboxSprites);
-        DrawSpriteSection("PlayStation Sprites", psSprites);
+        // Sprite Name Mappings
+        EditorGUILayout.LabelField("Sprite Name Mappings", EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox(
+            "Define sprite names for each input action. The sprite names must match exactly with sprites in your TMP Sprite Asset.\n\n" +
+            "Example sprite names:\n" +
+            "• Keyboard: 'WASD', 'Shift', 'Space', 'E', 'Mouse_Left'\n" +
+            "• Xbox: 'Xbox_A', 'Xbox_B', 'Xbox_X', 'Xbox_Y', 'Xbox_LT'\n" +
+            "• PlayStation: 'PS_Cross', 'PS_Circle', 'PS_Square', 'PS_Triangle', 'PS_L2'",
+            MessageType.Info
+        );
+        
+        EditorGUILayout.Space(5);
+        
+        // Draw the list with proper array controls
+        EditorGUILayout.PropertyField(spriteNameMappingsProperty, new GUIContent("Action Sprite Maps"), true);
         
         EditorGUILayout.Space(10);
         
-        // Utility buttons
-        EditorGUILayout.LabelField("Utilities", EditorStyles.boldLabel);
+        // Quick actions
+        EditorGUILayout.LabelField("Quick Actions", EditorStyles.boldLabel);
         
         EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Clear All Sprites"))
+        
+        if (GUILayout.Button("Initialize Default Mappings"))
         {
-            if (EditorUtility.DisplayDialog("Clear All Sprites", 
-                "Are you sure you want to clear all sprite assignments?", "Yes", "Cancel"))
+            if (EditorUtility.DisplayDialog("Initialize Default Mappings", 
+                "This will reset all mappings to default values. Continue?", "Yes", "Cancel"))
             {
-                ClearAllSprites();
+                InitializeDefaultMappings();
             }
         }
         
-        if (GUILayout.Button("Find Missing Sprites"))
+        if (GUILayout.Button("Clear All Mappings"))
         {
-            ShowMissingSprites();
+            if (EditorUtility.DisplayDialog("Clear All Mappings", 
+                "Are you sure you want to clear all sprite name mappings?", "Yes", "Cancel"))
+            {
+                ClearAllMappings();
+            }
         }
+        
         EditorGUILayout.EndHorizontal();
+        
+        EditorGUILayout.Space(10);
+        
+        // Validation
+        if (spriteNameMappingsProperty.arraySize == 0)
+        {
+            EditorGUILayout.HelpBox(
+                "No mappings defined! Click 'Initialize Default Mappings' to create the standard input action mappings.",
+                MessageType.Warning
+            );
+        }
+        else
+        {
+            int emptyMappings = CountEmptyMappings();
+            if (emptyMappings > 0)
+            {
+                EditorGUILayout.HelpBox(
+                    $"{emptyMappings} mapping(s) have empty sprite names. Fill them in or they will use text fallbacks.",
+                    MessageType.Warning
+                );
+            }
+        }
         
         serializedObject.ApplyModifiedProperties();
     }
     
-    private void DrawSpriteSection(string title, SerializedProperty[] properties)
-    {
-        EditorGUILayout.BeginVertical("box");
-        EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
-        EditorGUILayout.Space(5);
-        
-        foreach (var prop in properties)
-        {
-            if (prop != null)
-            {
-                EditorGUILayout.PropertyField(prop);
-            }
-        }
-        
-        EditorGUILayout.EndVertical();
-        EditorGUILayout.Space(5);
-    }
-    
-    private int CountAssignedSprites()
+    private int CountEmptyMappings()
     {
         int count = 0;
         
-        foreach (var prop in keyboardSprites.Concat(xboxSprites).Concat(psSprites))
+        for (int i = 0; i < spriteNameMappingsProperty.arraySize; i++)
         {
-            if (prop != null && prop.objectReferenceValue != null)
+            SerializedProperty element = spriteNameMappingsProperty.GetArrayElementAtIndex(i);
+            SerializedProperty keyboardName = element.FindPropertyRelative("keyboardSpriteName");
+            SerializedProperty xboxName = element.FindPropertyRelative("xboxSpriteName");
+            SerializedProperty psName = element.FindPropertyRelative("playStationSpriteName");
+            
+            bool allEmpty = string.IsNullOrEmpty(keyboardName.stringValue) &&
+                           string.IsNullOrEmpty(xboxName.stringValue) &&
+                           string.IsNullOrEmpty(psName.stringValue);
+            
+            if (allEmpty)
             {
                 count++;
             }
@@ -180,182 +132,45 @@ public class InputIconMapperEditor : Editor
         return count;
     }
     
-    private void GenerateSpriteAsset()
+    private void InitializeDefaultMappings()
     {
-        // Collect all assigned sprites
-        List<Sprite> allSprites = new List<Sprite>();
+        // Clear existing
+        spriteNameMappingsProperty.ClearArray();
         
-        // Add keyboard sprites
-        foreach (var prop in keyboardSprites)
-        {
-            if (prop != null && prop.objectReferenceValue != null)
-            {
-                Sprite sprite = prop.objectReferenceValue as Sprite;
-                if (sprite != null && !allSprites.Contains(sprite))
-                {
-                    allSprites.Add(sprite);
-                }
-            }
-        }
-        
-        // Add Xbox sprites
-        foreach (var prop in xboxSprites)
-        {
-            if (prop != null && prop.objectReferenceValue != null)
-            {
-                Sprite sprite = prop.objectReferenceValue as Sprite;
-                if (sprite != null && !allSprites.Contains(sprite))
-                {
-                    allSprites.Add(sprite);
-                }
-            }
-        }
-        
-        // Add PlayStation sprites
-        foreach (var prop in psSprites)
-        {
-            if (prop != null && prop.objectReferenceValue != null)
-            {
-                Sprite sprite = prop.objectReferenceValue as Sprite;
-                if (sprite != null && !allSprites.Contains(sprite))
-                {
-                    allSprites.Add(sprite);
-                }
-            }
-        }
-        
-        if (allSprites.Count == 0)
-        {
-            EditorUtility.DisplayDialog("No Sprites Assigned", 
-                "Please assign at least one sprite before generating the sprite asset.", "OK");
-            return;
-        }
-        
-        // Ask where to save
-        string path = EditorUtility.SaveFilePanelInProject(
-            "Save TMP Sprite Asset",
-            "InputIcons_Generated",
-            "asset",
-            "Choose where to save the generated TMP Sprite Asset",
-            "Assets/TextMesh Pro/Resources/Sprite Assets"
-        );
-        
-        if (string.IsNullOrEmpty(path))
-        {
-            return; // User cancelled
-        }
-        
-        // Create the sprite asset
-        TMP_SpriteAsset spriteAsset = ScriptableObject.CreateInstance<TMP_SpriteAsset>();
-        
-        // Add sprites to the asset
-        for (int i = 0; i < allSprites.Count; i++)
-        {
-            Sprite sprite = allSprites[i];
-            
-            // Create sprite glyph
-            TMP_SpriteGlyph glyph = new TMP_SpriteGlyph
-            {
-                index = (uint)i,
-                sprite = sprite,
-                metrics = new UnityEngine.TextCore.GlyphMetrics(
-                    sprite.rect.width,
-                    sprite.rect.height,
-                    0, // bearing X
-                    sprite.rect.height, // bearing Y
-                    sprite.rect.width // advance
-                ),
-                glyphRect = new UnityEngine.TextCore.GlyphRect(
-                    (int)sprite.rect.x,
-                    (int)sprite.rect.y,
-                    (int)sprite.rect.width,
-                    (int)sprite.rect.height
-                ),
-                scale = 1.0f,
-                atlasIndex = 0
-            };
-            
-            // Create sprite character
-            TMP_SpriteCharacter character = new TMP_SpriteCharacter
-            {
-                unicode = 0xFFFE, // Private use area
-                name = sprite.name,
-                glyphIndex = (uint)i,
-                scale = 1.0f
-            };
-            
-            // Add to the asset using Add methods (properties are read-only)
-            spriteAsset.spriteGlyphTable.Add(glyph);
-            spriteAsset.spriteCharacterTable.Add(character);
-        }
-        
-        // Save the asset
-        AssetDatabase.CreateAsset(spriteAsset, path);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        
-        // Select the created asset
-        EditorGUIUtility.PingObject(spriteAsset);
-        Selection.activeObject = spriteAsset;
-        
-        // Show success message
-        EditorUtility.DisplayDialog("Sprite Asset Generated!", 
-            $"Successfully created TMP Sprite Asset with {allSprites.Count} sprites!\n\n" +
-            $"Location: {path}\n\n" +
-            "Next steps:\n" +
-            "1. Assign this sprite asset to your TextMeshProUGUI components\n" +
-            "2. Use placeholders like {Confirm} in your text\n" +
-            "3. The system will replace them with sprite icons!", 
-            "OK");
-        
-        Debug.Log($"[InputIconMapper] Generated TMP Sprite Asset with {allSprites.Count} sprites at: {path}");
-    }
-    
-    private void ClearAllSprites()
-    {
-        foreach (var prop in keyboardSprites.Concat(xboxSprites).Concat(psSprites))
-        {
-            if (prop != null)
-            {
-                prop.objectReferenceValue = null;
-            }
-        }
+        // Add default mappings (matching the defaults in InputIconMapper.cs)
+        AddMapping(InputAction.Move, "WASD", "Xbox_LS", "PS_LS");
+        AddMapping(InputAction.Run, "Shift", "Xbox_R3", "PS_R3");
+        AddMapping(InputAction.Interact, "E", "Xbox_A", "PS_Cross");
+        AddMapping(InputAction.QTE, "Space", "Xbox_A", "PS_Cross");
+        AddMapping(InputAction.Parry, "Space", "Xbox_A", "PS_Cross");
+        AddMapping(InputAction.Confirm, "Enter", "Xbox_A", "PS_Cross");
+        AddMapping(InputAction.Cancel, "ESC", "Xbox_B", "PS_Circle");
+        AddMapping(InputAction.LightAttack, "Mouse_Left", "Xbox_X", "PS_Square");
+        AddMapping(InputAction.HeavyAttack, "Mouse_Right", "Xbox_Y", "PS_Triangle");
+        AddMapping(InputAction.Skill1, "Q", "Xbox_LT", "PS_L2");
+        AddMapping(InputAction.Skill2, "R", "Xbox_RT", "PS_R2");
+        AddMapping(InputAction.EndTurn, "Tab", "Xbox_RB", "PS_R1");
         
         serializedObject.ApplyModifiedProperties();
-        EditorUtility.DisplayDialog("Sprites Cleared", "All sprite assignments have been cleared.", "OK");
+        EditorUtility.DisplayDialog("Initialized", "Default sprite name mappings have been created!", "OK");
     }
     
-    private void ShowMissingSprites()
+    private void AddMapping(InputAction action, string keyboardName, string xboxName, string psName)
     {
-        List<string> missingSprites = new List<string>();
+        int index = spriteNameMappingsProperty.arraySize;
+        spriteNameMappingsProperty.InsertArrayElementAtIndex(index);
         
-        CheckMissing(keyboardSprites, "Keyboard", missingSprites);
-        CheckMissing(xboxSprites, "Xbox", missingSprites);
-        CheckMissing(psSprites, "PlayStation", missingSprites);
-        
-        if (missingSprites.Count == 0)
-        {
-            EditorUtility.DisplayDialog("All Sprites Assigned", 
-                "Great! All sprite fields have assignments.", "OK");
-        }
-        else
-        {
-            string message = "The following sprite fields are missing assignments:\n\n";
-            message += string.Join("\n", missingSprites);
-            
-            EditorUtility.DisplayDialog("Missing Sprites", message, "OK");
-        }
+        SerializedProperty element = spriteNameMappingsProperty.GetArrayElementAtIndex(index);
+        element.FindPropertyRelative("action").enumValueIndex = (int)action;
+        element.FindPropertyRelative("keyboardSpriteName").stringValue = keyboardName;
+        element.FindPropertyRelative("xboxSpriteName").stringValue = xboxName;
+        element.FindPropertyRelative("playStationSpriteName").stringValue = psName;
     }
     
-    private void CheckMissing(SerializedProperty[] properties, string deviceName, List<string> missing)
+    private void ClearAllMappings()
     {
-        foreach (var prop in properties)
-        {
-            if (prop != null && prop.objectReferenceValue == null)
-            {
-                string fieldName = prop.displayName;
-                missing.Add($"• {deviceName}: {fieldName}");
-            }
-        }
+        spriteNameMappingsProperty.ClearArray();
+        serializedObject.ApplyModifiedProperties();
+        EditorUtility.DisplayDialog("Cleared", "All sprite name mappings have been cleared.", "OK");
     }
 }

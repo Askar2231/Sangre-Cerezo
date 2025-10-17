@@ -71,6 +71,15 @@ public class InputIconMapper : MonoBehaviour
         InputSystem.onDeviceChange -= OnInputDeviceChanged;
     }
 
+    private void OnDestroy()
+    {
+        // Clean up singleton reference when destroyed
+        if (_instance == this)
+        {
+            _instance = null;
+        }
+    }
+
     private void InitializeIconSets()
     {
         currentSpriteNameSet = new Dictionary<InputAction, string>();
@@ -413,10 +422,10 @@ public class InputIconMapper : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets sprite or text representation for an action
+    /// Gets sprite or text representation for an action (PUBLIC)
     /// Returns TMP sprite tag using sprite name from atlas
     /// </summary>
-    private string GetSpriteOrText(InputAction action)
+    public string GetSpriteOrText(InputAction action)
     {
         // Get the sprite name for this action from our current sprite name set
         string spriteName = GetSpriteNameForAction(action);

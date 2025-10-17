@@ -16,6 +16,8 @@ public class XPlayerInteraction : MonoBehaviour
     
     private NPCInteraction currentNPC;
     private bool isUsingGamepad = false;
+    private float interactionCooldown = 0f;
+    private const float INTERACTION_COOLDOWN_TIME = 0.5f; // Prevent multiple triggers
     
     private void OnEnable()
     {
@@ -35,6 +37,12 @@ public class XPlayerInteraction : MonoBehaviour
         DetectNearbyNPC();
         UpdatePrompt();
         CheckInteraction();
+        
+        // Update cooldown timer
+        if (interactionCooldown > 0f)
+        {
+            interactionCooldown -= Time.deltaTime;
+        }
     }
     
     private void DetectInputDevice()
@@ -68,16 +76,26 @@ public class XPlayerInteraction : MonoBehaviour
             {
                 interactionPrompt.SetActive(true);
                 
-                // Cambiar texto según el dispositivo de entrada
+                // Use InputIconMapper for dynamic button display
                 if (promptText != null)
                 {
-                    if (isUsingGamepad)
+                    if (InputIconMapper.Instance != null)
                     {
-                        promptText.text = "[Y] Interactuar";
+                        // Use InputIconMapper to get device-specific button icon/text
+                        string iconText = InputIconMapper.Instance.GetSpriteOrText(InputAction.Interact);
+                        promptText.text = iconText + " Interactuar";
                     }
                     else
                     {
-                        promptText.text = "[E] Interactuar";
+                        // Fallback if InputIconMapper not available
+                        if (isUsingGamepad)
+                        {
+                            promptText.text = "[Y] Interactuar";
+                        }
+                        else
+                        {
+                            promptText.text = "[E] Interactuar";
+                        }
                     }
                 }
             }
@@ -94,10 +112,15 @@ public class XPlayerInteraction : MonoBehaviour
     
     private void CheckInteraction()
     {
+        // Don't check if on cooldown
+        if (interactionCooldown > 0f || currentNPC == null)
+            return;
+        
         bool interactPressed = false;
         
         // Método 1: Input System (mando y teclado desde InputActions)
-        if (interactAction != null && interactAction.action.triggered)
+        // FIXED: Use WasPressedThisFrame() instead of triggered to prevent auto-fire on gamepad
+        if (interactAction != null && interactAction.action.WasPressedThisFrame())
         {
             interactPressed = true;
         }
@@ -114,9 +137,10 @@ public class XPlayerInteraction : MonoBehaviour
             interactPressed = true;
         }
         
-        if (interactPressed && currentNPC != null)
+        if (interactPressed)
         {
             currentNPC.TriggerInteraction();
+            interactionCooldown = INTERACTION_COOLDOWN_TIME; // Start cooldown
         }
     }
     
