@@ -192,7 +192,7 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         // DEBUG TEMPORAL - quitar después
         if (Time.frameCount % 60 == 0) // cada 60 frames
         {
-            Debug.Log($"Camera Combat Check - State: {currentState}, Active: {isActive}, InCombat: {inCombat}");
+//            Debug.Log($"Camera Combat Check - State: {currentState}, Active: {isActive}, InCombat: {inCombat}");
         }
         
         return inCombat;

@@ -112,6 +112,15 @@ public class BattleInputManager : MonoBehaviour
         }
     }
     
+    private void Start()
+    {
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> Starting with state: <color=yellow>{currentInputState}</color>");
+            Debug.Log($"<color=cyan>[BattleInput]</color> Waiting for battle initialization...");
+        }
+    }
+    
     #endregion
     
     #region Input Action Subscription
@@ -315,9 +324,20 @@ public class BattleInputManager : MonoBehaviour
     
     private void ProcessLightAttack()
     {
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> ProcessLightAttack() called! State: {currentInputState}");
+        }
+        
         if (!ValidatePlayerAction("Light Attack")) return;
         
         LogInput("Light Attack", true);
+        
+        if (debugMode)
+        {
+            Debug.Log($"<color=lime>[BattleInput] LIGHT ATTACK EVENT FIRED!</color>");
+        }
+        
         OnLightAttackRequested?.Invoke();
     }
     
@@ -414,6 +434,11 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     private bool ValidatePlayerAction(string actionName)
     {
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> Validating {actionName} | State: {currentInputState}");
+        }
+        
         // Check if input is globally disabled
         if (currentInputState == BattleInputState.Disabled)
         {
@@ -435,6 +460,11 @@ public class BattleInputManager : MonoBehaviour
             return false;
         }
         
+        if (debugMode)
+        {
+            Debug.Log($"<color=lime>[BattleInput] {actionName} VALIDATION PASSED!</color>");
+        }
+        
         return true;
     }
     
@@ -447,7 +477,14 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     public void SetInputState(BattleInputState newState)
     {
-        if (currentInputState == newState) return;
+        if (currentInputState == newState) 
+        {
+            if (debugMode)
+            {
+                Debug.Log($"<color=cyan>[BattleInput]</color> State unchanged: <color=yellow>{newState}</color>");
+            }
+            return;
+        }
         
         BattleInputState previousState = currentInputState;
         currentInputState = newState;
@@ -455,6 +492,12 @@ public class BattleInputManager : MonoBehaviour
         if (debugMode)
         {
             Debug.Log($"<color=cyan>[BattleInput]</color> State: <color=yellow>{previousState}</color> → <color=lime>{newState}</color>");
+            
+            // Extra logging para PlayerTurn
+            if (newState == BattleInputState.PlayerTurn)
+            {
+                Debug.Log($"<color=lime>[BattleInput] PLAYER TURN ENABLED! Actions now allowed.</color>");
+            }
         }
         
         OnInputStateChanged?.Invoke(newState);
@@ -511,6 +554,11 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     public void EnablePlayerTurnInput()
     {
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> EnablePlayerTurnInput() called! Current: {currentInputState} → PlayerTurn");
+        }
+        
         SetInputState(BattleInputState.PlayerTurn);
     }
     

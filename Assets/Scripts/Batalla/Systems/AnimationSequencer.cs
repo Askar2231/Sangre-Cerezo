@@ -79,10 +79,21 @@ public class AnimationSequencer : MonoBehaviour
         
         AnimatorStateInfo stateInfo;
         float previousNormalizedTime = 0f;
+        float timeoutTimer = 0f; // AGREGAR timer de timeout
+        const float TIMEOUT_DURATION = 4f; // 4 segundos máximo
         
         while (isPlayingSequence)
         {
             stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            timeoutTimer += Time.deltaTime; // INCREMENTAR timer
+            
+            // FORZAR fin si pasan 4 segundos
+            if (timeoutTimer >= TIMEOUT_DURATION)
+            {
+                Debug.LogWarning($"Animation sequence timed out after {TIMEOUT_DURATION} seconds! Force completing.");
+                CompleteSequence();
+                yield break;
+            }
             
             // Verify we're in the correct animation state
             if (!stateInfo.IsName(currentAnimationState))
@@ -106,6 +117,7 @@ public class AnimationSequencer : MonoBehaviour
             // Check if animation completed (normalizedTime >= 1.0)
             if (stateInfo.normalizedTime >= 1f)
             {
+                Debug.Log($"Animation completed normally after {timeoutTimer:F2} seconds");
                 CompleteSequence();
                 yield break;
             }
@@ -197,6 +209,14 @@ public class AnimationSequencer : MonoBehaviour
     private void CompleteSequence()
     {
         isPlayingSequence = false;
+        
+        // FORZAR animador de vuelta a Idle/Standby
+        if (animator != null)
+        {
+            animator.Play("Idle"); // O el nombre de tu estado base
+            Debug.Log("Animation forced back to Idle state");
+        }
+        
         onAnimationComplete?.Invoke();
         
         // Cleanup

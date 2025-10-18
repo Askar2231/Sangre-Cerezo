@@ -39,7 +39,8 @@ public class BattleManagerV2 : MonoBehaviour
     public event Action<BattleResult> OnBattleEnded;
 
     // Properties
-    public BattleState CurrentState => turnManager?.CurrentBattleState ?? BattleState.BattleStart;
+    private BattleState currentBattleState = BattleState.BattleStart;
+    public BattleState CurrentState => currentBattleState;
     public bool IsBattleActive => battleResult == BattleResult.None;
 
     [Header("Parry System")]
@@ -268,6 +269,7 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandleBattleStateChanged(BattleState newState)
     {
         Debug.Log($">>> Battle State Changed: {newState}");
+        currentBattleState = newState; // ACTUALIZAR estado local
         OnBattleStateChanged?.Invoke(newState);
 
         switch (newState)
@@ -281,6 +283,7 @@ public class BattleManagerV2 : MonoBehaviour
                 break;
 
             case BattleState.BattleEnd:
+                currentBattleState = BattleState.BattleEnd; // ACTUALIZAR
                 EndBattle();
                 break;
         }
@@ -316,12 +319,13 @@ public class BattleManagerV2 : MonoBehaviour
 
     #region Player Turn
 
+    // CORREGIR StartPlayerTurn() para habilitar input correctamente:
     private void StartPlayerTurn()
     {
-        Debug.Log("=== PLAYER TURN ===");
+        Debug.Log("=== PLAYER TURN START ===");
+        currentBattleState = BattleState.PlayerTurn; // AGREGAR esta línea
+        
         playerController.Character.StaminaManager.RestoreToMax();
-
-        // Actualizar display de turno
         UpdateTurnDisplayUI("PLAYER TURN");
         
         // Enable UI buttons for player input
@@ -330,7 +334,19 @@ public class BattleManagerV2 : MonoBehaviour
             uiButtonController.EnableInput();
             uiButtonController.SetButtonsVisible(true);
         }
-
+        
+        // HABILITAR INPUT MANAGER CORRECTAMENTE
+        if (inputManager != null)
+        {
+            Debug.Log($"Enabling input. Current state: {inputManager.CurrentInputState}");
+            inputManager.EnablePlayerTurnInput();
+            Debug.Log($"Input enabled. New state: {inputManager.CurrentInputState}");
+        }
+        else
+        {
+            Debug.LogError("InputManager is NULL in StartPlayerTurn!");
+        }
+        
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
 
@@ -383,24 +399,33 @@ public class BattleManagerV2 : MonoBehaviour
 
     private void HandlePlayerActionComplete()
     {
-        Debug.Log("Player action complete");
-
-        // Disable UI buttons during action execution
-        if (uiButtonController != null)
-        {
-            uiButtonController.DisableInput();
-        }
-
+        Debug.Log("=== PLAYER ACTION COMPLETE ===");
+        
         // Actualizar UI de vida después de la acción del jugador
         UpdateHealthUI();
-
+        
         // Check if enemy is dead
         if (!enemyController.Character.IsAlive)
         {
+            Debug.Log("Enemy died - not restoring input");
             return; // Death handler will end battle
         }
-
-        // Return to action selection or wait for player to end turn
+        
+        // RESTAURAR INPUT DEL JUGADOR para permitir más acciones
+        if (inputManager != null)
+        {
+            Debug.Log($"Restoring input from: {inputManager.CurrentInputState}");
+            inputManager.EnablePlayerTurnInput();
+            Debug.Log($"Input restored to: {inputManager.CurrentInputState}");
+        }
+        
+        // Enable UI buttons again
+        if (uiButtonController != null)
+        {
+            uiButtonController.EnableInput();
+        }
+        
+        // Return to action selection
         turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
     }
 
@@ -411,7 +436,7 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleInputLightAttack()
     {
-        if (CurrentState != BattleState.PlayerTurn) return;
+        if (currentBattleState != BattleState.PlayerTurn) return;
         
         if (!playerController.CanPerformAction(ActionType.LightAttack))
         {
@@ -442,7 +467,7 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleInputHeavyAttack()
     {
-        if (CurrentState != BattleState.PlayerTurn) return;
+        if (currentBattleState != BattleState.PlayerTurn) return;
         
         if (!playerController.CanPerformAction(ActionType.HeavyAttack))
         {
@@ -473,7 +498,7 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleInputSkill1()
     {
-        if (CurrentState != BattleState.PlayerTurn) return;
+        if (currentBattleState != BattleState.PlayerTurn) return;
         
         if (!playerController.CanPerformAction(ActionType.Skill))
         {
@@ -504,7 +529,7 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleInputSkill2()
     {
-        if (CurrentState != BattleState.PlayerTurn) return;
+        if (currentBattleState != BattleState.PlayerTurn) return;
         
         if (!playerController.CanPerformAction(ActionType.Skill))
         {
@@ -535,7 +560,7 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleInputEndTurn()
     {
-        if (CurrentState != BattleState.PlayerTurn) return;
+        if (currentBattleState != BattleState.PlayerTurn) return;
         
         Debug.Log("[Input] End Turn requested");
         
@@ -562,11 +587,24 @@ public class BattleManagerV2 : MonoBehaviour
     private void StartEnemyTurn()
     {
         Debug.Log("=== ENEMY TURN ===");
+        currentBattleState = BattleState.EnemyTurn; // ACTUALIZAR estado
+        
         enemyController.Character.StaminaManager.RestoreToMax();
-
-        // Actualizar display de turno
         UpdateTurnDisplayUI("ENEMY TURN");
-
+        
+        // DESHABILITAR INPUT
+        if (inputManager != null)
+        {
+            inputManager.SetInputState(BattleInputState.Disabled);
+            Debug.Log("Input disabled for enemy turn");
+        }
+        
+        if (uiButtonController != null)
+        {
+            uiButtonController.DisableInput();
+            uiButtonController.SetButtonsVisible(false);
+        }
+        
         turnManager.ChangeEnemyTurnState(EnemyTurnState.Thinking);
         enemyController.ExecuteThinking();
     }
@@ -889,14 +927,17 @@ public class BattleManagerV2 : MonoBehaviour
     }
     
     /// <summary>
-    /// Handle QTE window ending (NEW)
+    /// Handle QTE window ending (CORREGIDO)
     /// </summary>
     private void HandleQTEWindowEnd()
     {
-        // Return to previous state (likely ExecutingAction)
-        if (inputManager != null && CurrentState == BattleState.PlayerTurn)
+        Debug.Log("QTE Window ended - restoring player input");
+        
+        // RESTAURAR input a PlayerTurn si estamos en turno del jugador
+        if (inputManager != null && currentBattleState == BattleState.PlayerTurn)
         {
-            inputManager.SetInputState(BattleInputState.ExecutingAction);
+            inputManager.EnablePlayerTurnInput();
+            Debug.Log($"Input restored after QTE: {inputManager.CurrentInputState}");
         }
     }
 
