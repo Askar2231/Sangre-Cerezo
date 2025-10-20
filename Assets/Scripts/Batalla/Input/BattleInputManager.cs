@@ -100,9 +100,24 @@ public class BattleInputManager : MonoBehaviour
     }
     
     private void OnDisable()
+{
+    UnsubscribeFromInputActions();
+    
+    // LIMPIAR eventos de sistemas
+    if (parrySystem != null)
     {
-        UnsubscribeFromInputActions();
+        parrySystem.OnParryWindowActive -= SetParryWindowActive;
+        Debug.Log($"<color=cyan>[BattleInput]</color> ParrySystem events unsubscribed");
     }
+    
+    if (qteManager != null)
+    {
+        // CORREGIR desuscripción también:
+        qteManager.OnQTEWindowStart -= (isActive) => SetQTEWindowActive(isActive);
+        qteManager.OnQTEWindowEnd -= () => SetQTEWindowActive(false);
+        Debug.Log($"<color=cyan>[BattleInput]</color> QTEManager events unsubscribed");
+    }
+}
     
     private void Update()
     {
@@ -113,13 +128,41 @@ public class BattleInputManager : MonoBehaviour
     }
     
     private void Start()
+{
+    if (debugMode)
     {
-        if (debugMode)
-        {
-            Debug.Log($"<color=cyan>[BattleInput]</color> Starting with state: <color=yellow>{currentInputState}</color>");
-            Debug.Log($"<color=cyan>[BattleInput]</color> Waiting for battle initialization...");
-        }
+        Debug.Log($"<color=cyan>[BattleInput]</color> Starting with state: <color=yellow>{currentInputState}</color>");
+        Debug.Log($"<color=cyan>[BattleInput]</color> Waiting for battle initialization...");
     }
+    
+    // CONEXIÓN A EVENTOS DEL PARRYSYSTEM
+    if (parrySystem != null)
+    {
+        Debug.Log($"<color=lime>[BattleInput]</color> ✅ Connecting to ParrySystem events");
+        parrySystem.OnParryWindowActive += SetParryWindowActive;
+        Debug.Log($"<color=lime>[BattleInput]</color> ✅ ParrySystem.OnParryWindowActive subscribed!");
+    }
+    else
+    {
+        Debug.LogWarning($"<color=red>[BattleInput]</color> ❌ ParrySystem is NULL! Parry input will not work!");
+    }
+    
+    // CORREGIR CONEXIÓN A EVENTOS DEL QTEMANAGER:
+    if (qteManager != null)
+    {
+        Debug.Log($"<color=lime>[BattleInput]</color> ✅ Connecting to QTEManager events");
+        
+        // OnQTEWindowStart es Action<bool>, así que necesitamos manejar el parámetro bool:
+        qteManager.OnQTEWindowStart += (isActive) => SetQTEWindowActive(isActive);
+        qteManager.OnQTEWindowEnd += () => SetQTEWindowActive(false);
+        
+        Debug.Log($"<color=lime>[BattleInput]</color> ✅ QTEManager events subscribed!");
+    }
+    else
+    {
+        Debug.LogWarning($"<color=red>[BattleInput]</color> ❌ QTEManager is NULL! QTE input will not work!");
+    }
+}
     
     #endregion
     
@@ -627,19 +670,29 @@ public class BattleInputManager : MonoBehaviour
     /// <summary>
     /// Notify that parry window is active (called by ParrySystem)
     /// </summary>
-    public void SetParryWindowActive(bool isActive)
+    /// <summary>
+/// Notify that parry window is active (called by ParrySystem)
+/// </summary>
+public void SetParryWindowActive(bool isActive)
+{
+    Debug.Log($"<color=cyan>[BattleInput]</color> 🛡️ SetParryWindowActive({isActive}) CALLED! Current: parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
+    
+    parryWindowActive = isActive;
+    
+    if (isActive)
     {
-        Debug.Log($"<color=cyan>[BattleInput]</color> 🛡️ SetParryWindowActive({isActive}) CALLED! Current: parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
-        
-        parryWindowActive = isActive;
-        
-        if (isActive)
-        {
-            SetInputState(BattleInputState.ParryWindow);
-        }
-        
-        Debug.Log($"<color=lime>[BattleInput]</color> Parry Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")} | parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
+        SetInputState(BattleInputState.ParryWindow);
+        Debug.Log($"<color=lime>[BattleInput]</color> ✅ State changed to ParryWindow!");
     }
+    else
+    {
+        // RESTAURAR a PlayerTurn cuando la ventana se cierra
+        SetInputState(BattleInputState.PlayerTurn);
+        Debug.Log($"<color=cyan>[BattleInput]</color> ✅ State restored to PlayerTurn!");
+    }
+    
+    Debug.Log($"<color=lime>[BattleInput]</color> Parry Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")} | parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
+}
     
     /// <summary>
     /// Notify that QTE window is active (called by QTEManager)

@@ -88,12 +88,12 @@ public class BattleManagerV2 : MonoBehaviour
         ValidateReferences();
     }
 
-    // MODIFICAR el método Start() para que NO inicie automáticamente:
+    // MODIFICAR el método Start() para conectar ParrySystem al InputManager:
     private void Start()
     {
         Debug.Log("<color=cyan>[BattleManager]</color> 🎮 Start() - Setting up event subscriptions...");
         
-        // Subscribe to BattleInputManager events (NEW)
+        // Subscribe to BattleInputManager events
         if (inputManager != null)
         {
             Debug.Log("<color=lime>[BattleManager]</color> ✅ Subscribing to BattleInputManager events");
@@ -102,7 +102,21 @@ public class BattleManagerV2 : MonoBehaviour
             inputManager.OnSkill1Requested += HandleInputSkill1;
             inputManager.OnSkill2Requested += HandleInputSkill2;
             inputManager.OnEndTurnRequested += HandleInputEndTurn;
-            // Note: Parry and QTE are handled directly by inputManager routing to systems
+            
+            // CONECTAR ParrySystem al InputManager
+            if (parrySystem != null && inputManager != null)
+            {
+                // Asegurarse de que el InputManager tenga la referencia al ParrySystem
+                // Si el InputManager no tiene el ParrySystem asignado, asignarlo por código
+                var parrySystemField = typeof(BattleInputManager).GetField("parrySystem", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (parrySystemField != null && parrySystemField.GetValue(inputManager) == null)
+                {
+                    parrySystemField.SetValue(inputManager, parrySystem);
+                    Debug.Log("<color=lime>[BattleManager]</color> ✅ ParrySystem assigned to InputManager via code");
+                }
+            }
+            
             Debug.Log("<color=lime>[BattleManager]</color> ✅ BattleInputManager event subscriptions complete");
         }
         else
@@ -125,7 +139,7 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogWarning("<color=yellow>[BattleManager]</color> ⚠️ ParrySystem is NULL! Cannot subscribe to events!");
         }
         
-        // Subscribe to QTEManager events (NEW - for input state coordination)
+        // Subscribe to QTEManager events
         if (qteManager != null)
         {
             Debug.Log("<color=lime>[BattleManager]</color> ✅ Subscribing to QTEManager events");
@@ -133,6 +147,16 @@ public class BattleManagerV2 : MonoBehaviour
             qteManager.OnQTEWindowEnd += HandleQTEWindowEnd;
             qteManager.OnQTESuccess += HandleQTESuccess;
             qteManager.OnQTEFail += HandleQTEFail;
+            
+            // ASEGURAR que QTEManager esté conectado al InputManager también
+            var qteManagerField = typeof(BattleInputManager).GetField("qteManager", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (qteManagerField != null && qteManagerField.GetValue(inputManager) == null)
+            {
+                qteManagerField.SetValue(inputManager, qteManager);
+                Debug.Log("<color=lime>[BattleManager]</color> ✅ QTEManager assigned to InputManager via code");
+            }
+            
             Debug.Log("<color=lime>[BattleManager]</color> ✅ QTEManager event subscriptions complete");
         }
         else
@@ -140,14 +164,9 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogWarning("<color=yellow>[BattleManager]</color> ⚠️ QTEManager is NULL! Cannot subscribe to events!");
         }
         
-        // Subscribe to UI button events (DEPRECATED - now handled by inputManager)
-        // Keeping for backward compatibility during transition
+        // Subscribe to UI button events
         if (uiButtonController != null)
         {
-            // Note: UI buttons should now call inputManager methods instead
-            // These handlers will be removed once BattleUIButtonController is updated
-            
-            // Initially disable buttons until battle starts
             uiButtonController.DisableInput();
             uiButtonController.SetButtonsVisible(false);
         }
@@ -1167,8 +1186,12 @@ public class BattleManagerV2 : MonoBehaviour
         // Notify BattleInputManager about parry window state
         if (inputManager != null)
         {
-            Debug.Log($"<color=cyan>[BattleManager]</color> 📤 Notifying BattleInputManager.SetParryWindowActive({isActive})");
+            Debug.Log($"<color=cyan>[BattleManager]</color> 📤 Calling BattleInputManager.SetParryWindowActive({isActive})");
             inputManager.SetParryWindowActive(isActive);
+            
+            // VERIFICAR que se aplicó correctamente
+            Debug.Log($"<color=cyan>[BattleManager]</color> 🔍 After SetParryWindowActive: InputManager.IsParryWindowActive = {inputManager.IsParryWindowActive}");
+            Debug.Log($"<color=cyan>[BattleManager]</color> 🔍 After SetParryWindowActive: InputManager.CurrentInputState = {inputManager.CurrentInputState}");
         }
         else
         {
@@ -1179,10 +1202,12 @@ public class BattleManagerV2 : MonoBehaviour
         if (isActive)
         {
             CreateParryIndicator();
+            Debug.Log($"<color=lime>[BattleManager]</color> ✅ Parry window OPENED - Players should be able to parry now!");
         }
         else
         {
             DestroyParryIndicator();
+            Debug.Log($"<color=red>[BattleManager]</color> ❌ Parry window CLOSED");
         }
     }
     
