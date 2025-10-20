@@ -19,6 +19,7 @@ public class BattleManagerV2 : MonoBehaviour
     [SerializeField] private QTEManager qteManager;
     [SerializeField] private ParrySystem parrySystem;
     [SerializeField] private BattleInputManager inputManager; // NEW: Centralized input handling
+    [SerializeField] private BattleNotificationSystem notificationSystem;
 
     [Header("Player Movement")]
     [SerializeField] private MovimientoV2 playerMovement;
@@ -29,10 +30,29 @@ public class BattleManagerV2 : MonoBehaviour
 
     [Header("Camera")]
     [SerializeField] private ThirdPersonJRPGCamera battleCamera;
+    
+    [Header("Combat Positioning (Optional)")]
+    [Tooltip("Optional: Set this to use specific combat positions. Can be set dynamically by BattleTrigger.")]
+    [SerializeField] private BattlePositionSetup combatPositionSetup;
+    
+    [Header("Camera Fade Settings")]
+    [Tooltip("Fade duration when transitioning to combat positions")]
+    [SerializeField] private float fadeOutDuration = 0.3f;
+    [SerializeField] private float fadeInDuration = 0.5f;
+    [SerializeField] private float fadeHoldDuration = 0.1f;
 
     // Core Systems
     private TurnManager turnManager;
     private BattleResult battleResult = BattleResult.None;
+    
+    // Position tracking
+    private Vector3 playerOriginalPosition;
+    private Quaternion playerOriginalRotation;
+    private bool isTransitioningPositions = false;
+    
+    // Damage tracking for notifications
+    private bool lastAttackHadQTE = false;
+    private bool lastQTEWasSuccessful = false;
 
     // Events for UI
     public event Action<BattleState> OnBattleStateChanged;
@@ -45,10 +65,14 @@ public class BattleManagerV2 : MonoBehaviour
 
     [Header("Parry System")]
     [SerializeField] private GameObject parryIndicatorPrefab;
-    [SerializeField] private float parryIndicatorHeight = 1.5f; // Nueva variable configurable
-    [SerializeField] private float parryIndicatorScale = 0.8f;  // Nueva variable configurable
+    [SerializeField] private float parryIndicatorHeight = 1.5f;
+    [SerializeField] private float parryIndicatorScale = 0.8f;
+    
+    [Header("Parry Rewards")]
     [SerializeField] private float counterAttackDamage = 25f;
     [SerializeField] private float parryStaminaReward = 30f;
+    [SerializeField] private string counterAttackAnimationState = "CounterAttack";
+    
     private GameObject activeParryIndicator;
 
     [Header("UI Health Display")]
@@ -67,31 +91,53 @@ public class BattleManagerV2 : MonoBehaviour
     // MODIFICAR el método Start() para que NO inicie automáticamente:
     private void Start()
     {
+        Debug.Log("<color=cyan>[BattleManager]</color> 🎮 Start() - Setting up event subscriptions...");
+        
         // Subscribe to BattleInputManager events (NEW)
         if (inputManager != null)
         {
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ Subscribing to BattleInputManager events");
             inputManager.OnLightAttackRequested += HandleInputLightAttack;
             inputManager.OnHeavyAttackRequested += HandleInputHeavyAttack;
             inputManager.OnSkill1Requested += HandleInputSkill1;
             inputManager.OnSkill2Requested += HandleInputSkill2;
             inputManager.OnEndTurnRequested += HandleInputEndTurn;
             // Note: Parry and QTE are handled directly by inputManager routing to systems
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ BattleInputManager event subscriptions complete");
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>[BattleManager]</color> ⚠️ BattleInputManager is NULL! Input will not work!");
         }
         
         // Subscribe to ParrySystem events
         if (parrySystem != null)
         {
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ Subscribing to ParrySystem events");
             parrySystem.OnParryWindowActive += HandleParryWindowStateChanged;
             parrySystem.OnParrySuccess += HandleParrySuccess;
             parrySystem.OnParrySuccessWithTiming += HandleParrySuccessWithTiming;
             parrySystem.OnParryFail += HandleParryFail;
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ ParrySystem event subscriptions complete");
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>[BattleManager]</color> ⚠️ ParrySystem is NULL! Cannot subscribe to events!");
         }
         
         // Subscribe to QTEManager events (NEW - for input state coordination)
         if (qteManager != null)
         {
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ Subscribing to QTEManager events");
             qteManager.OnQTEWindowStart += HandleQTEWindowStateChanged;
             qteManager.OnQTEWindowEnd += HandleQTEWindowEnd;
+            qteManager.OnQTESuccess += HandleQTESuccess;
+            qteManager.OnQTEFail += HandleQTEFail;
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ QTEManager event subscriptions complete");
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>[BattleManager]</color> ⚠️ QTEManager is NULL! Cannot subscribe to events!");
         }
         
         // Subscribe to UI button events (DEPRECATED - now handled by inputManager)
@@ -129,6 +175,17 @@ public class BattleManagerV2 : MonoBehaviour
 
         // Disable player movement during battle
         DisablePlayerMovement();
+        
+        // Move combatants to combat positions if setup is provided
+        if (combatPositionSetup != null && combatPositionSetup.IsValid())
+        {
+            // Use camera fade with instant positioning during fade
+            StartCoroutine(TransitionWithFade());
+        }
+        else
+        {
+            Debug.LogWarning("No BattlePositionSetup assigned or invalid - using current positions");
+        }
 
         // Initialize AnimationSequencer with player animator
         if (playerAnimationSequencer != null && playerController?.Character?.Animator != null)
@@ -144,7 +201,7 @@ public class BattleManagerV2 : MonoBehaviour
         );
 
         // Initialize controllers with proper AnimationSequencer reference
-        playerController.Initialize(playerAnimationSequencer, qteManager);
+        playerController.Initialize(playerAnimationSequencer, qteManager, notificationSystem);
         enemyController.Initialize(parrySystem);
 
         // Reset characters
@@ -225,6 +282,18 @@ public class BattleManagerV2 : MonoBehaviour
 
         InitializeBattle();
     }
+    
+    /// <summary>
+    /// Start battle with specific enemy and combat positioning
+    /// </summary>
+    public void StartBattleWithEnemy(EnemyBattleController specificEnemy, BattlePositionSetup positionSetup)
+    {
+        // Set the position setup before initializing
+        combatPositionSetup = positionSetup;
+        
+        // Call the standard method
+        StartBattleWithEnemy(specificEnemy);
+    }
 
     // El método FindAndAssignNewEnemy() se mantiene como respaldo:
     /// <summary>
@@ -257,11 +326,13 @@ public class BattleManagerV2 : MonoBehaviour
         // Player events
         playerController.OnActionComplete += HandlePlayerActionComplete;
         playerController.Character.OnDeath += HandlePlayerDeath;
+        playerController.Character.OnDamageTaken += HandlePlayerDamageTaken;
 
         // Enemy events
         enemyController.OnThinkingComplete += HandleEnemyThinkingComplete;
         enemyController.OnAttackComplete += HandleEnemyAttackComplete;
         enemyController.Character.OnDeath += HandleEnemyDeath;
+        enemyController.Character.OnDamageTaken += HandleEnemyDamageTaken;
     }
 
     #region State Change Handlers
@@ -440,7 +511,8 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (!playerController.CanPerformAction(ActionType.LightAttack))
         {
-            Debug.LogWarning("Cannot perform light attack - insufficient resources");
+            if (notificationSystem != null)
+                notificationSystem.ShowInsufficientResources("ataque ligero");
             return;
         }
         
@@ -471,7 +543,8 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (!playerController.CanPerformAction(ActionType.HeavyAttack))
         {
-            Debug.LogWarning("Cannot perform heavy attack - insufficient resources");
+            if (notificationSystem != null)
+                notificationSystem.ShowInsufficientResources("ataque pesado");
             return;
         }
         
@@ -502,7 +575,8 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (!playerController.CanPerformAction(ActionType.Skill))
         {
-            Debug.LogWarning("Cannot perform skill 1 - insufficient resources");
+            if (notificationSystem != null)
+                notificationSystem.ShowInsufficientResources("habilidad 1");
             return;
         }
         
@@ -533,7 +607,8 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (!playerController.CanPerformAction(ActionType.Skill))
         {
-            Debug.LogWarning("Cannot perform skill 2 - insufficient resources");
+            if (notificationSystem != null)
+                notificationSystem.ShowInsufficientResources("habilidad 2");
             return;
         }
         
@@ -706,12 +781,63 @@ public class BattleManagerV2 : MonoBehaviour
 
         // INVOCAR EVENTO ANTES DE LIMPIAR
         OnBattleEnded?.Invoke(battleResult);
+        
+        // Return player to original position if we moved them
+        if (combatPositionSetup != null)
+        {
+            StartCoroutine(ReturnFromCombatPositionsAndCleanup());
+        }
+        else
+        {
+            // Re-enable player movement after battle
+            EnablePlayerMovement();
 
+            // LIMPIAR TODO EL ESTADO COMPLETAMENTE
+            CleanupBattleState();
+        }
+    }
+    
+    /// <summary>
+    /// Return from combat positions then cleanup (used when transitioning positions)
+    /// </summary>
+    private IEnumerator ReturnFromCombatPositionsAndCleanup()
+    {
+        // Use camera fade for return
+        if (CameraFadeController.Instance != null)
+        {
+            yield return CameraFadeController.Instance.FadeOutAndIn(
+                actionDuringFade: () => ReturnPlayerToOriginalPositionInstantly(),
+                fadeOutDuration: fadeOutDuration * 0.8f, // Slightly faster on exit
+                fadeInDuration: fadeInDuration,
+                holdDuration: fadeHoldDuration * 0.5f
+            );
+        }
+        else
+        {
+            ReturnPlayerToOriginalPositionInstantly();
+            yield return null;
+        }
+        
         // Re-enable player movement after battle
         EnablePlayerMovement();
 
         // LIMPIAR TODO EL ESTADO COMPLETAMENTE
         CleanupBattleState();
+    }
+    
+    /// <summary>
+    /// Instantly return player to original position (called during fade)
+    /// </summary>
+    private void ReturnPlayerToOriginalPositionInstantly()
+    {
+        if (playerController?.Character?.gameObject != null)
+        {
+            Transform playerTransform = playerController.Character.transform;
+            playerTransform.position = playerOriginalPosition;
+            playerTransform.rotation = playerOriginalRotation;
+            
+            Debug.Log("Player returned to original position (instant)");
+        }
     }
 
     // AGREGAR método para limpiar completamente el estado:
@@ -827,7 +953,10 @@ public class BattleManagerV2 : MonoBehaviour
         {
             playerController.OnActionComplete -= HandlePlayerActionComplete;
             if (playerController.Character != null)
+            {
                 playerController.Character.OnDeath -= HandlePlayerDeath;
+                playerController.Character.OnDamageTaken -= HandlePlayerDamageTaken;
+            }
         }
 
         if (enemyController != null)
@@ -835,7 +964,10 @@ public class BattleManagerV2 : MonoBehaviour
             enemyController.OnThinkingComplete -= HandleEnemyThinkingComplete;
             enemyController.OnAttackComplete -= HandleEnemyAttackComplete;
             if (enemyController.Character != null)
+            {
                 enemyController.Character.OnDeath -= HandleEnemyDeath;
+                enemyController.Character.OnDamageTaken -= HandleEnemyDamageTaken;
+            }
         }
 
         if (turnManager != null)
@@ -852,6 +984,15 @@ public class BattleManagerV2 : MonoBehaviour
             parrySystem.OnParrySuccess -= HandleParrySuccess;
             parrySystem.OnParrySuccessWithTiming -= HandleParrySuccessWithTiming;
             parrySystem.OnParryFail -= HandleParryFail;
+        }
+        
+        // Unsubscribe from QTE events
+        if (qteManager != null)
+        {
+            qteManager.OnQTEWindowStart -= HandleQTEWindowStateChanged;
+            qteManager.OnQTEWindowEnd -= HandleQTEWindowEnd;
+            qteManager.OnQTESuccess -= HandleQTESuccess;
+            qteManager.OnQTEFail -= HandleQTEFail;
         }
     }
 
@@ -887,6 +1028,132 @@ public class BattleManagerV2 : MonoBehaviour
     }
 
     #endregion
+    
+    #region Combat Positioning
+    
+    /// <summary>
+    /// Transition with camera fade - instant positioning during black screen
+    /// </summary>
+    private IEnumerator TransitionWithFade()
+    {
+        if (combatPositionSetup == null || !combatPositionSetup.IsValid())
+        {
+            yield break;
+        }
+        
+        isTransitioningPositions = true;
+        
+        // Save original positions
+        if (playerController?.Character?.gameObject != null)
+        {
+            playerOriginalPosition = playerController.Character.transform.position;
+            playerOriginalRotation = playerController.Character.transform.rotation;
+        }
+        
+        Debug.Log("<color=cyan>Starting camera fade transition to combat positions</color>");
+        
+        // Use camera fade system
+        if (CameraFadeController.Instance != null)
+        {
+            yield return CameraFadeController.Instance.FadeOutAndIn(
+                actionDuringFade: () => PositionCharactersInstantly(),
+                fadeOutDuration: fadeOutDuration,
+                fadeInDuration: fadeInDuration,
+                holdDuration: fadeHoldDuration
+            );
+        }
+        else
+        {
+            // Fallback: instant positioning without fade
+            Debug.LogWarning("CameraFadeController not found! Positioning instantly without fade.");
+            PositionCharactersInstantly();
+            yield return null;
+        }
+        
+        isTransitioningPositions = false;
+        Debug.Log("<color=green>Combat positioning with fade complete!</color>");
+    }
+    
+    /// <summary>
+    /// Instantly position all characters (called during fade)
+    /// </summary>
+    private void PositionCharactersInstantly()
+    {
+        if (combatPositionSetup == null || !combatPositionSetup.IsValid())
+        {
+            return;
+        }
+        
+        Transform playerTarget = combatPositionSetup.PlayerCombatPosition;
+        Transform enemyTarget = combatPositionSetup.EnemyCombatPosition;
+        Transform cameraTarget = combatPositionSetup.CameraCombatPosition;
+        
+        // Position player
+        if (playerController?.Character?.gameObject != null && playerTarget != null)
+        {
+            Transform playerTransform = playerController.Character.transform;
+            playerTransform.position = playerTarget.position;
+            
+            if (combatPositionSetup.AutoRotateToFaceOpponent && enemyTarget != null)
+            {
+                Vector3 lookDir = (enemyTarget.position - playerTransform.position).normalized;
+                lookDir.y = 0f;
+                if (lookDir != Vector3.zero)
+                {
+                    playerTransform.rotation = Quaternion.LookRotation(lookDir);
+                }
+            }
+            else
+            {
+                playerTransform.rotation = playerTarget.rotation;
+            }
+            
+            Debug.Log($"Player positioned at: {playerTarget.position}");
+        }
+        
+        // Position enemy
+        if (enemyController?.Character?.gameObject != null && enemyTarget != null)
+        {
+            Transform enemyTransform = enemyController.Character.transform;
+            enemyTransform.position = enemyTarget.position;
+            
+            if (combatPositionSetup.AutoRotateToFaceOpponent && playerTarget != null)
+            {
+                Vector3 lookDir = (playerTarget.position - enemyTransform.position).normalized;
+                lookDir.y = 0f;
+                if (lookDir != Vector3.zero)
+                {
+                    enemyTransform.rotation = Quaternion.LookRotation(lookDir);
+                }
+            }
+            else
+            {
+                enemyTransform.rotation = enemyTarget.rotation;
+            }
+            
+            Debug.Log($"Enemy positioned at: {enemyTarget.position}");
+        }
+        
+        // Position camera
+        if (battleCamera != null && cameraTarget != null)
+        {
+            Transform cameraTransform = battleCamera.transform;
+            cameraTransform.position = cameraTarget.position;
+            cameraTransform.rotation = cameraTarget.rotation;
+            
+            Debug.Log($"Camera positioned at: {cameraTarget.position}");
+        }
+    }
+    
+    /// <summary>
+    /// Set combat position setup dynamically (called by BattleTrigger)
+    /// </summary>
+    public void SetCombatPositionSetup(BattlePositionSetup setup)
+    {
+        combatPositionSetup = setup;
+    }
+    
+    #endregion
 
     #region Parry System
 
@@ -895,10 +1162,17 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParryWindowStateChanged(bool isActive)
     {
+        Debug.Log($"<color=cyan>[BattleManager]</color> 🛡️ HandleParryWindowStateChanged({isActive}) called from ParrySystem");
+        
         // Notify BattleInputManager about parry window state
         if (inputManager != null)
         {
+            Debug.Log($"<color=cyan>[BattleManager]</color> 📤 Notifying BattleInputManager.SetParryWindowActive({isActive})");
             inputManager.SetParryWindowActive(isActive);
+        }
+        else
+        {
+            Debug.LogWarning($"<color=yellow>[BattleManager]</color> ⚠️ InputManager is NULL! Cannot notify parry window state!");
         }
         
         // Visual feedback
@@ -917,13 +1191,27 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleQTEWindowStateChanged(bool isActive)
     {
+        Debug.Log($"<color=cyan>[BattleManager]</color> ⚡ HandleQTEWindowStateChanged({isActive}) called from QTEManager");
+        
         // Notify BattleInputManager about QTE window state
         if (inputManager != null)
         {
+            Debug.Log($"<color=cyan>[BattleManager]</color> 📤 Notifying BattleInputManager.SetQTEWindowActive({isActive})");
             inputManager.SetQTEWindowActive(isActive);
         }
+        else
+        {
+            Debug.LogWarning($"<color=yellow>[BattleManager]</color> ⚠️ InputManager is NULL! Cannot notify QTE window state!");
+        }
         
-        Debug.Log($"QTE Window: {(isActive ? "OPEN" : "CLOSED")}");
+        // Track that this attack has a QTE
+        if (isActive)
+        {
+            lastAttackHadQTE = true;
+            lastQTEWasSuccessful = false; // Reset until we know the result
+        }
+        
+        Debug.Log($"<color=cyan>[BattleManager]</color> QTE Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")}");
     }
     
     /// <summary>
@@ -940,6 +1228,77 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.Log($"Input restored after QTE: {inputManager.CurrentInputState}");
         }
     }
+    
+    /// <summary>
+    /// Handle QTE success - Show notification with damage dealt
+    /// </summary>
+    private void HandleQTESuccess()
+    {
+        Debug.Log("QTE Success! Perfect attack!");
+        lastQTEWasSuccessful = true;
+        // Notification will be shown when damage is actually dealt (HandleEnemyDamageTaken)
+    }
+    
+    /// <summary>
+    /// Handle QTE fail - Show notification for normal attack
+    /// </summary>
+    private void HandleQTEFail()
+    {
+        Debug.Log("QTE Failed! Normal attack.");
+        lastQTEWasSuccessful = false;
+        // Notification will be shown when damage is actually dealt (HandleEnemyDamageTaken)
+    }
+    
+    /// <summary>
+    /// Handle damage dealt to enemy - Show appropriate notification
+    /// </summary>
+    private void HandleEnemyDamageTaken(float damage)
+    {
+        Debug.Log($"Enemy took {damage} damage");
+        
+        if (notificationSystem == null) return;
+        
+        // Check if this damage was from a QTE attack
+        if (lastAttackHadQTE)
+        {
+            if (lastQTEWasSuccessful)
+            {
+                notificationSystem.ShowQTESuccess(damage);
+            }
+            else
+            {
+                notificationSystem.ShowQTEFailed(damage);
+            }
+            
+            // Reset QTE tracking
+            lastAttackHadQTE = false;
+            lastQTEWasSuccessful = false;
+        }
+        else
+        {
+            // Normal damage (no QTE, or from counter attack, etc.)
+            notificationSystem.ShowDamageDealt(damage);
+        }
+    }
+    
+    /// <summary>
+    /// Handle damage dealt to player - Show notification
+    /// </summary>
+    private void HandlePlayerDamageTaken(float damage)
+    {
+        Debug.Log($"Player took {damage} damage");
+        
+        // Only show notification if it wasn't parried
+        // (Parry notifications are shown via HandleParrySuccessWithTiming)
+        if (notificationSystem != null && parrySystem != null)
+        {
+            // If parry window wasn't active, this is normal damage
+            if (!parrySystem.IsParryWindowActive)
+            {
+                notificationSystem.ShowDamageReceived(damage);
+            }
+        }
+    }
 
     /// <summary>
     /// Handle parry success event
@@ -948,6 +1307,19 @@ public class BattleManagerV2 : MonoBehaviour
     {
         DestroyParryIndicator();
         Debug.Log("Parry successful! Executing counter-attack!");
+
+        // Award stamina immediately
+        if (playerController != null && playerController.Character != null)
+        {
+            float staminaBefore = playerController.Character.StaminaManager.CurrentStamina;
+            playerController.Character.StaminaManager.AddStamina(parryStaminaReward);
+            float staminaAfter = playerController.Character.StaminaManager.CurrentStamina;
+            
+            Debug.Log($"<color=cyan>Parry Reward: +{parryStaminaReward} stamina! ({staminaBefore:F0} → {staminaAfter:F0})</color>");
+            
+            // Update UI immediately to show stamina reward
+            UpdatePlayerStaminaUI();
+        }
 
         // Ejecutar contrataque automático del jugador
         StartCoroutine(ExecuteCounterAttack());
@@ -958,26 +1330,47 @@ public class BattleManagerV2 : MonoBehaviour
         // Pequeño delay para la animación de parry
         yield return new WaitForSeconds(0.2f);
 
-        Debug.Log("Counter-attack hitting enemy!");
+        Debug.Log($"<color=yellow>Counter-attack hitting enemy for {counterAttackDamage} damage!</color>");
 
         // El jugador ejecuta el contrataque
         if (enemyController != null && enemyController.Character != null && enemyController.Character.IsAlive)
         {
-            // Ejecutar contrataque con animación
-            playerController.ExecuteCounterAttackOnEnemy(enemyController.Character);
-
-            // Restaurar stamina del jugador
-            if (playerController != null && playerController.Character != null)
+            // Play counter attack animation
+            if (playerController?.Character?.Animator != null)
             {
-                playerController.Character.StaminaManager.RestoreToMax();
+                playerController.Character.Animator.Play(counterAttackAnimationState, 0, 0f);
+                Debug.Log($"Playing counter attack animation: {counterAttackAnimationState}");
             }
+
+            // Wait a bit for animation to reach hit frame (adjust timing as needed)
+            yield return new WaitForSeconds(0.4f);
+
+            // Deal counter attack damage to enemy
+            float enemyHealthBefore = enemyController.Character.CurrentHealth;
+            enemyController.Character.TakeDamage(counterAttackDamage);
+            float enemyHealthAfter = enemyController.Character.CurrentHealth;
+            
+            Debug.Log($"<color=red>Enemy took {counterAttackDamage} counter damage! ({enemyHealthBefore:F0} → {enemyHealthAfter:F0})</color>");
 
             // Actualizar UI
             UpdateHealthUI();
+
+            // Play enemy hit reaction
+            if (enemyController.Character.Animator != null)
+            {
+                enemyController.Character.Animator.Play("Hit");
+            }
         }
 
         // Pequeño delay antes de continuar
         yield return new WaitForSeconds(0.5f);
+        
+        // Return player to idle
+        if (playerController?.Character?.Animator != null)
+        {
+            playerController.Character.Animator.SetFloat("Speed", 0f);
+            Debug.Log("Counter attack complete, returning to idle");
+        }
     }
 
     /// <summary>
@@ -985,6 +1378,19 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParrySuccessWithTiming(bool wasPerfect)
     {
+        // Show notification based on perfect timing
+        if (notificationSystem != null)
+        {
+            if (wasPerfect)
+            {
+                notificationSystem.ShowPerfectParry(parryStaminaReward, counterAttackDamage);
+            }
+            else
+            {
+                notificationSystem.ShowParrySuccess(parryStaminaReward, counterAttackDamage);
+            }
+        }
+        
         // Delegate to PlayerBattleController to play parry animation
         if (playerController != null)
         {
@@ -1004,7 +1410,9 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParryFail()
     {
-        Debug.Log("Parry failed!");
+        Debug.Log("Parry failed! Player will take damage.");
+        // Note: Damage notification will be shown when damage is actually applied
+        // via EnemyBattleController's damage application
     }
 
     /// <summary>
@@ -1068,6 +1476,9 @@ public class BattleManagerV2 : MonoBehaviour
 
         if (parrySystem == null)
             Debug.LogError("ParrySystem not assigned!");
+        
+        if (notificationSystem == null)
+            Debug.LogWarning("BattleNotificationSystem not assigned! Notifications will not be shown.");
 
         if (playerMovement == null)
             Debug.LogWarning("PlayerMovement (MovimientoV2) not assigned! Movement will not be disabled during battle.");

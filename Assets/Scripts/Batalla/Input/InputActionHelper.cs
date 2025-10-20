@@ -49,20 +49,17 @@ public static class InputActionHelper
         
         if (InputIconMapper.Instance != null)
         {
-            Sprite sprite = InputIconMapper.Instance.GetIconForAction(mappedAction);
-            if (sprite != null)
-            {
-                return $"<sprite name=\"{sprite.name}\">";
-            }
+            // Use GetSpriteOrText which returns the proper TMP sprite tag
+            return InputIconMapper.Instance.GetSpriteOrText(mappedAction);
         }
         
         return actionRef.action.GetBindingDisplayString();
     }
     
     /// <summary>
-    /// Get the Sprite object for an InputActionReference
+    /// Get the Sprite name for an InputActionReference (for TMP Sprite Assets)
     /// </summary>
-    public static Sprite GetInputSprite(InputActionReference actionRef)
+    public static string GetInputSpriteName(InputActionReference actionRef)
     {
         if (actionRef == null || actionRef.action == null)
         {
@@ -74,7 +71,7 @@ public static class InputActionHelper
         
         if (InputIconMapper.Instance != null)
         {
-            return InputIconMapper.Instance.GetIconForAction(mappedAction);
+            return InputIconMapper.Instance.GetSpriteNameForAction(mappedAction);
         }
         
         return null;

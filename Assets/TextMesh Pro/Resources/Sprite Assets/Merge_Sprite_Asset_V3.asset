@@ -47,7 +47,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 1
     m_Scale: 1
-    m_Name: Mouse
+    m_Name: zzz
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 2
@@ -67,12 +67,12 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 5
     m_Scale: 1
-    m_Name: Merge_Sprites_V2_6
+    m_Name: Mouse
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 7
     m_Scale: 1
-    m_Name: Mouse_LeftClick
+    m_Name: Mouse_Left
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 8
@@ -82,12 +82,12 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 9
     m_Scale: 1
-    m_Name: Mouse_RightClick_Filled
+    m_Name: Mouse_RightRed
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 10
     m_Scale: 1
-    m_Name: Mouse_RightClick
+    m_Name: Mouse_Right
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 11
@@ -322,7 +322,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 57
     m_Scale: 1
-    m_Name: Merge_Sprites_V2_58
+    m_Name: Key_R
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 58
@@ -512,7 +512,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 95
     m_Scale: 1
-    m_Name: Merge_Sprites_V2_96
+    m_Name: Key_Q
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 96
@@ -1502,7 +1502,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 293
     m_Scale: 1
-    m_Name: Merge_Sprites_V2_305
+    m_Name: Key_E
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 294

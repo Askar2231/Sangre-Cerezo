@@ -95,20 +95,11 @@ public class BattleActionButton : MonoBehaviour
             return;
         }
         
-        // Get sprite from InputActionHelper
-        Sprite inputSprite = InputActionHelper.GetInputSprite(actionReference);
-        
-        if (showInputIcon && inputIconImage != null)
+        // Note: inputIconImage is not used with new TMP sprite system
+        // Icons are displayed inline within TextMeshPro text
+        if (inputIconImage != null)
         {
-            if (inputSprite != null)
-            {
-                inputIconImage.sprite = inputSprite;
-                inputIconImage.gameObject.SetActive(true);
-            }
-            else
-            {
-                inputIconImage.gameObject.SetActive(false);
-            }
+            inputIconImage.gameObject.SetActive(false);
         }
         
         if (showInputText && inputHintText != null)

@@ -131,8 +131,8 @@ public class XPlayerInteraction : MonoBehaviour
             interactPressed = true;
         }
         
-        // Método 3: Botón Y del mando directo (fallback)
-        if (Input.GetKeyDown(KeyCode.JoystickButton3))
+        // Método 3: Botón X del mando directo (fallback)
+        if (Input.GetKeyDown(KeyCode.JoystickButton2))
         {
             interactPressed = true;
         }

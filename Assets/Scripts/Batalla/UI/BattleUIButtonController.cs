@@ -22,13 +22,19 @@ public class BattleUIButtonController : MonoBehaviour
     [SerializeField] private Button qteButton;
     
     [Header("Input Actions - Link to InputSystem_Actions")]
-    // NOTE: These are now just for icon display purposes
-    // Actual input listening is handled by BattleInputManager
+    // ⚠️ DISPLAY ONLY - Used for icon display, NOT input listening
+    // Input listening is handled by BattleInputManager
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference lightAttackAction;
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference heavyAttackAction;
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference skill1Action;
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference skill2Action;
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference parryAction;
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference qteAction;
     
     [Header("Button Text (TMP with inline sprites)")]
@@ -277,6 +283,8 @@ public class BattleUIButtonController : MonoBehaviour
     /// </summary>
     private void HandleParryWindowChanged(bool isActive)
     {
+        Debug.Log($"<color=cyan>[BattleUIButtons]</color> 🛡️ HandleParryWindowChanged({isActive}) called from ParrySystem");
+        
         isParryWindowActive = isActive;
         
         if (isActive)
@@ -288,10 +296,7 @@ public class BattleUIButtonController : MonoBehaviour
             HideParryButton();
         }
         
-        if (debugMode)
-        {
-            Debug.Log($"[BattleUIButtons] Parry window {(isActive ? "OPENED" : "CLOSED")}");
-        }
+        Debug.Log($"<color=lime>[BattleUIButtons]</color> Parry window {(isActive ? "<color=lime>OPENED</color>" : "<color=red>CLOSED</color>")} - isParryWindowActive={isParryWindowActive}");
     }
     
     /// <summary>
@@ -299,6 +304,8 @@ public class BattleUIButtonController : MonoBehaviour
     /// </summary>
     private void HandleQTEWindowChanged(bool isActive)
     {
+        Debug.Log($"<color=cyan>[BattleUIButtons]</color> ⚡ HandleQTEWindowChanged({isActive}) called from QTEManager");
+        
         isQTEWindowActive = isActive;
         
         if (isActive)
@@ -310,10 +317,7 @@ public class BattleUIButtonController : MonoBehaviour
             HideQTEButton();
         }
         
-        if (debugMode)
-        {
-            Debug.Log($"[BattleUIButtons] QTE window {(isActive ? "OPENED" : "CLOSED")}");
-        }
+        Debug.Log($"<color=lime>[BattleUIButtons]</color> QTE window {(isActive ? "<color=lime>OPENED</color>" : "<color=red>CLOSED</color>")} - isQTEWindowActive={isQTEWindowActive}");
     }
     
     #endregion
@@ -406,17 +410,25 @@ public class BattleUIButtonController : MonoBehaviour
     
     private void TriggerParry()
     {
-        if (!isParryWindowActive) return;
+        Debug.Log($"<color=cyan>[BattleUIButtons]</color> 🛡️ TriggerParry() CALLED! isParryWindowActive={isParryWindowActive}");
         
-        if (debugMode)
+        if (!isParryWindowActive)
         {
-            Debug.Log("[BattleUIButtons] Parry button clicked");
+            Debug.LogWarning("<color=yellow>[BattleUIButtons]</color> ⚠️ Parry button clicked but isParryWindowActive is FALSE! Ignoring click.");
+            return;
         }
+        
+        Debug.Log("<color=lime>[BattleUIButtons]</color> ✅ Parry click validated, routing to BattleInputManager...");
         
         // Route through BattleInputManager (NEW)
         if (inputManager != null)
         {
+            Debug.Log("<color=lime>[BattleUIButtons]</color> 📤 Calling inputManager.TriggerParry()");
             inputManager.TriggerParry();
+        }
+        else
+        {
+            Debug.LogWarning("<color=red>[BattleUIButtons]</color> ❌ InputManager is NULL!");
         }
         
         // Legacy event for backward compatibility (will be removed)
@@ -427,17 +439,25 @@ public class BattleUIButtonController : MonoBehaviour
     
     private void TriggerQTE()
     {
-        if (!isQTEWindowActive) return;
+        Debug.Log($"<color=cyan>[BattleUIButtons]</color> ⚡ TriggerQTE() CALLED! isQTEWindowActive={isQTEWindowActive}");
         
-        if (debugMode)
+        if (!isQTEWindowActive)
         {
-            Debug.Log("[BattleUIButtons] QTE button clicked");
+            Debug.LogWarning("<color=yellow>[BattleUIButtons]</color> ⚠️ QTE button clicked but isQTEWindowActive is FALSE! Ignoring click.");
+            return;
         }
+        
+        Debug.Log("<color=lime>[BattleUIButtons]</color> ✅ QTE click validated, routing to BattleInputManager...");
         
         // Route through BattleInputManager (NEW)
         if (inputManager != null)
         {
+            Debug.Log("<color=lime>[BattleUIButtons]</color> 📤 Calling inputManager.TriggerQTE()");
             inputManager.TriggerQTE();
+        }
+        else
+        {
+            Debug.LogWarning("<color=red>[BattleUIButtons]</color> ❌ InputManager is NULL!");
         }
         
         // Legacy event for backward compatibility (will be removed)
@@ -547,10 +567,17 @@ public class BattleUIButtonController : MonoBehaviour
     /// </summary>
     private void ShowParryButton()
     {
+        Debug.Log("<color=cyan>[BattleUIButtons]</color> 🛡️ ShowParryButton() - Parry button is now VISIBLE");
+        
         if (parryButton != null)
         {
             parryButton.gameObject.SetActive(true);
             parryButton.interactable = true;
+            Debug.Log($"<color=lime>[BattleUIButtons]</color> ✅ Parry button activated: gameObject.activeSelf={parryButton.gameObject.activeSelf}, interactable={parryButton.interactable}");
+        }
+        else
+        {
+            Debug.LogWarning("<color=red>[BattleUIButtons]</color> ❌ Parry button reference is NULL!");
         }
     }
     
@@ -559,6 +586,8 @@ public class BattleUIButtonController : MonoBehaviour
     /// </summary>
     private void HideParryButton()
     {
+        Debug.Log("<color=cyan>[BattleUIButtons]</color> 🛡️ HideParryButton() - Parry button is now HIDDEN");
+        
         if (parryButton != null)
         {
             parryButton.gameObject.SetActive(false);
@@ -570,10 +599,17 @@ public class BattleUIButtonController : MonoBehaviour
     /// </summary>
     private void ShowQTEButton()
     {
+        Debug.Log("<color=cyan>[BattleUIButtons]</color> ⚡ ShowQTEButton() - QTE button is now VISIBLE");
+        
         if (qteButton != null)
         {
             qteButton.gameObject.SetActive(true);
             qteButton.interactable = true;
+            Debug.Log($"<color=lime>[BattleUIButtons]</color> ✅ QTE button activated: gameObject.activeSelf={qteButton.gameObject.activeSelf}, interactable={qteButton.interactable}");
+        }
+        else
+        {
+            Debug.LogWarning("<color=red>[BattleUIButtons]</color> ❌ QTE button reference is NULL!");
         }
     }
     
@@ -582,6 +618,8 @@ public class BattleUIButtonController : MonoBehaviour
     /// </summary>
     private void HideQTEButton()
     {
+        Debug.Log("<color=cyan>[BattleUIButtons]</color> ⚡ HideQTEButton() - QTE button is now HIDDEN");
+        
         if (qteButton != null)
         {
             qteButton.gameObject.SetActive(false);

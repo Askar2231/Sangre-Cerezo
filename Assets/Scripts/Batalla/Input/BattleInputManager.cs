@@ -127,48 +127,75 @@ public class BattleInputManager : MonoBehaviour
     
     private void SubscribeToInputActions()
     {
+        if (debugMode)
+        {
+            Debug.Log("<color=cyan>[BattleInput]</color> 🎮 SubscribeToInputActions() called - Subscribing and enabling all input actions...");
+        }
+        
         // Player turn actions
         if (lightAttackInput != null && lightAttackInput.action != null)
         {
             lightAttackInput.action.performed += OnLightAttackInput;
             lightAttackInput.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ Light Attack input subscribed and enabled");
         }
         
         if (heavyAttackInput != null && heavyAttackInput.action != null)
         {
             heavyAttackInput.action.performed += OnHeavyAttackInput;
             heavyAttackInput.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ Heavy Attack input subscribed and enabled");
         }
         
         if (skill1Input != null && skill1Input.action != null)
         {
             skill1Input.action.performed += OnSkill1Input;
             skill1Input.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ Skill1 input subscribed and enabled");
         }
         
         if (skill2Input != null && skill2Input.action != null)
         {
             skill2Input.action.performed += OnSkill2Input;
             skill2Input.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ Skill2 input subscribed and enabled");
         }
         
         if (endTurnInput != null && endTurnInput.action != null)
         {
             endTurnInput.action.performed += OnEndTurnInput;
             endTurnInput.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ End Turn input subscribed and enabled");
         }
         
         // Timing actions
         if (parryInput != null && parryInput.action != null)
         {
-            parryInput.action.performed += OnParryInput;
+            parryInput.action.started += OnParryInput;   // Triggers when button is first pressed
+            parryInput.action.performed += OnParryInput; // Triggers on full press
             parryInput.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ PARRY input subscribed (started + performed) and ENABLED");
+        }
+        else
+        {
+            if (debugMode) Debug.LogWarning("<color=red>[BattleInput]</color> ❌ PARRY input is NULL or action is NULL!");
         }
         
         if (qteInput != null && qteInput.action != null)
         {
-            qteInput.action.performed += OnQTEInput;
+            qteInput.action.started += OnQTEInput;   // Triggers when button is first pressed
+            qteInput.action.performed += OnQTEInput; // Triggers on full press
             qteInput.action.Enable();
+            if (debugMode) Debug.Log("<color=lime>[BattleInput]</color> ✅ QTE input subscribed (started + performed) and ENABLED");
+        }
+        else
+        {
+            if (debugMode) Debug.LogWarning("<color=red>[BattleInput]</color> ❌ QTE input is NULL or action is NULL!");
+        }
+        
+        if (debugMode)
+        {
+            Debug.Log("<color=lime>[BattleInput]</color> ✅ All input action subscriptions complete!");
         }
     }
     
@@ -208,12 +235,14 @@ public class BattleInputManager : MonoBehaviour
         // Timing actions
         if (parryInput != null && parryInput.action != null)
         {
+            parryInput.action.started -= OnParryInput;
             parryInput.action.performed -= OnParryInput;
             parryInput.action.Disable();
         }
         
         if (qteInput != null && qteInput.action != null)
         {
+            qteInput.action.started -= OnQTEInput;
             qteInput.action.performed -= OnQTEInput;
             qteInput.action.Disable();
         }
@@ -250,12 +279,38 @@ public class BattleInputManager : MonoBehaviour
     
     private void OnParryInput(UnityEngine.InputSystem.InputAction.CallbackContext context)
     {
-        ProcessParry();
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> ⚔️ OnParryInput TRIGGERED! Phase: <color=yellow>{context.phase}</color>, State: {currentInputState}, Window Active: {parryWindowActive}");
+        }
+        
+        // Only process on 'performed' phase (button press completed)
+        if (context.performed)
+        {
+            if (debugMode)
+            {
+                Debug.Log($"<color=lime>[BattleInput]</color> 🔥 PARRY BUTTON PERFORMED! Processing now...");
+            }
+            ProcessParry();
+        }
     }
     
     private void OnQTEInput(UnityEngine.InputSystem.InputAction.CallbackContext context)
     {
-        ProcessQTE();
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> ⚡ OnQTEInput TRIGGERED! Phase: <color=yellow>{context.phase}</color>, State: {currentInputState}, Window Active: {qteWindowActive}");
+        }
+        
+        // Only process on 'performed' phase (button press completed)
+        if (context.performed)
+        {
+            if (debugMode)
+            {
+                Debug.Log($"<color=lime>[BattleInput]</color> 🔥 QTE BUTTON PERFORMED! Processing now...");
+            }
+            ProcessQTE();
+        }
     }
     
     #endregion
@@ -307,6 +362,7 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     public void TriggerParry()
     {
+        Debug.Log($"<color=cyan>[BattleInput]</color> 🛡️ TriggerParry() PUBLIC METHOD CALLED from UI! parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
         ProcessParry();
     }
     
@@ -315,6 +371,7 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     public void TriggerQTE()
     {
+        Debug.Log($"<color=cyan>[BattleInput]</color> ⚡ TriggerQTE() PUBLIC METHOD CALLED from UI! qteWindowActive={qteWindowActive}, currentInputState={currentInputState}");
         ProcessQTE();
     }
     
@@ -375,54 +432,118 @@ public class BattleInputManager : MonoBehaviour
     
     private void ProcessParry()
     {
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> 🛡️ ProcessParry() called | parryWindowActive: {parryWindowActive}, currentInputState: {currentInputState}");
+        }
+        
         // Parry only valid during parry window
         if (!parryWindowActive)
         {
             LogInput("Parry", false, "No parry window active");
+            if (debugMode)
+            {
+                Debug.LogWarning($"<color=red>[BattleInput]</color> ❌ PARRY REJECTED: No parry window active!");
+            }
             return;
         }
         
         if (currentInputState != BattleInputState.ParryWindow)
         {
             LogInput("Parry", false, $"Wrong state: {currentInputState}");
+            if (debugMode)
+            {
+                Debug.LogWarning($"<color=red>[BattleInput]</color> ❌ PARRY REJECTED: Wrong state ({currentInputState}), expected ParryWindow!");
+            }
             return;
         }
         
         LogInput("Parry", true);
+        if (debugMode)
+        {
+            Debug.Log($"<color=lime>[BattleInput]</color> ✅ PARRY VALIDATED! Routing to ParrySystem...");
+        }
         
         // Route to ParrySystem if directly wired, otherwise fire event
         if (parrySystem != null)
         {
+            if (debugMode)
+            {
+                Debug.Log($"<color=lime>[BattleInput]</color> 📤 Calling ParrySystem.ProcessParryInput()");
+            }
             parrySystem.ProcessParryInput();
+        }
+        else
+        {
+            if (debugMode)
+            {
+                Debug.LogWarning($"<color=yellow>[BattleInput]</color> ⚠️ ParrySystem reference is NULL! Using event fallback.");
+            }
         }
         
         OnParryPressed?.Invoke();
+        if (debugMode)
+        {
+            Debug.Log($"<color=lime>[BattleInput]</color> 📢 OnParryPressed event fired!");
+        }
     }
     
     private void ProcessQTE()
     {
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[BattleInput]</color> ⚡ ProcessQTE() called | qteWindowActive: {qteWindowActive}, currentInputState: {currentInputState}");
+        }
+        
         // QTE only valid during QTE window
         if (!qteWindowActive)
         {
             LogInput("QTE", false, "No QTE window active");
+            if (debugMode)
+            {
+                Debug.LogWarning($"<color=red>[BattleInput]</color> ❌ QTE REJECTED: No QTE window active!");
+            }
             return;
         }
         
         if (currentInputState != BattleInputState.QTEWindow)
         {
             LogInput("QTE", false, $"Wrong state: {currentInputState}");
+            if (debugMode)
+            {
+                Debug.LogWarning($"<color=red>[BattleInput]</color> ❌ QTE REJECTED: Wrong state ({currentInputState}), expected QTEWindow!");
+            }
             return;
         }
         
         LogInput("QTE", true);
+        if (debugMode)
+        {
+            Debug.Log($"<color=lime>[BattleInput]</color> ✅ QTE VALIDATED! Routing to QTEManager...");
+        }
         
         // Route to QTEManager if directly wired, otherwise fire event
         if (qteManager != null)
         {
+            if (debugMode)
+            {
+                Debug.Log($"<color=lime>[BattleInput]</color> 📤 Calling QTEManager.ProcessQTEInput()");
+            }
             qteManager.ProcessQTEInput();
+        }
+        else
+        {
+            if (debugMode)
+            {
+                Debug.LogWarning($"<color=yellow>[BattleInput]</color> ⚠️ QTEManager reference is NULL! Using event fallback.");
+            }
         }
         
         OnQTEPressed?.Invoke();
+        if (debugMode)
+        {
+            Debug.Log($"<color=lime>[BattleInput]</color> 📢 OnQTEPressed event fired!");
+        }
     }
     
     #endregion
@@ -508,6 +629,8 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     public void SetParryWindowActive(bool isActive)
     {
+        Debug.Log($"<color=cyan>[BattleInput]</color> 🛡️ SetParryWindowActive({isActive}) CALLED! Current: parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
+        
         parryWindowActive = isActive;
         
         if (isActive)
@@ -515,10 +638,7 @@ public class BattleInputManager : MonoBehaviour
             SetInputState(BattleInputState.ParryWindow);
         }
         
-        if (debugMode)
-        {
-            Debug.Log($"<color=cyan>[BattleInput]</color> Parry Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")}");
-        }
+        Debug.Log($"<color=lime>[BattleInput]</color> Parry Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")} | parryWindowActive={parryWindowActive}, currentInputState={currentInputState}");
     }
     
     /// <summary>
@@ -526,6 +646,8 @@ public class BattleInputManager : MonoBehaviour
     /// </summary>
     public void SetQTEWindowActive(bool isActive)
     {
+        Debug.Log($"<color=cyan>[BattleInput]</color> ⚡ SetQTEWindowActive({isActive}) CALLED! Current: qteWindowActive={qteWindowActive}, currentInputState={currentInputState}");
+        
         qteWindowActive = isActive;
         
         if (isActive)
@@ -533,10 +655,7 @@ public class BattleInputManager : MonoBehaviour
             SetInputState(BattleInputState.QTEWindow);
         }
         
-        if (debugMode)
-        {
-            Debug.Log($"<color=cyan>[BattleInput]</color> QTE Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")}");
-        }
+        Debug.Log($"<color=lime>[BattleInput]</color> QTE Window: {(isActive ? "<color=lime>OPEN</color>" : "<color=red>CLOSED</color>")} | qteWindowActive={qteWindowActive}, currentInputState={currentInputState}");
     }
     
     /// <summary>

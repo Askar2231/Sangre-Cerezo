@@ -29,6 +29,7 @@ public class BattleCharacter : MonoBehaviour
     
     // Events
     public event Action<float, float> OnHealthChanged; // current, max
+    public event Action<float> OnDamageTaken; // damage amount
     public event Action OnDeath;
     
     public bool IsAlive => CurrentHealth > 0;
@@ -50,12 +51,13 @@ public class BattleCharacter : MonoBehaviour
         CurrentHealth = Mathf.Max(0, CurrentHealth);
         
         OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
+        OnDamageTaken?.Invoke(damage); // NEW: Notify damage taken
         Debug.Log($"{gameObject.name} took {damage} damage! HP: {CurrentHealth}/{maxHealth}");
         
         // Play TakeDamage animation if alive
         if (CurrentHealth > 0 && animator != null && !string.IsNullOrEmpty(takeDamageAnimationName))
         {
-            animator.Play(takeDamageAnimationName);
+            animator.Play(takeDamageAnimationName, 0);
             Debug.Log($"{gameObject.name} playing TakeDamage animation");
         }
         
@@ -101,7 +103,7 @@ public class BattleCharacter : MonoBehaviour
         // Play Death animation
         if (animator != null && !string.IsNullOrEmpty(deathAnimationName))
         {
-            animator.Play(deathAnimationName);
+            animator.Play(deathAnimationName, 0);
             Debug.Log($"{gameObject.name} playing Death animation");
         }
         
@@ -121,7 +123,7 @@ public class BattleCharacter : MonoBehaviour
     {
         if (animator != null && !string.IsNullOrEmpty(victoryAnimationName))
         {
-            animator.Play(victoryAnimationName);
+            animator.Play(victoryAnimationName, 0);
             Debug.Log($"{gameObject.name} playing Victory animation");
         }
     }

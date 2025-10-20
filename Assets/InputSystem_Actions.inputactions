@@ -170,7 +170,7 @@
                 {
                     "name": "",
                     "id": "e4fe8fd1-be25-44ee-a195-3072bc44b1a6",
-                    "path": "<Keyboard>/tab",
+                    "path": "<Keyboard>/escape",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -181,7 +181,7 @@
                 {
                     "name": "",
                     "id": "333cb471-bcf1-40ac-b7ab-be46f70eaebc",
-                    "path": "<Gamepad>/buttonEast",
+                    "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "Gamepad",
@@ -225,7 +225,7 @@
                 {
                     "name": "",
                     "id": "085f8841-1729-47af-9cf5-5389eace9e53",
-                    "path": "<Gamepad>/start",
+                    "path": "<Gamepad>/buttonEast",
                     "interactions": "",
                     "processors": "",
                     "groups": "",

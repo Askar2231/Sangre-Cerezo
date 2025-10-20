@@ -5,15 +5,39 @@ using System.Collections;
 
 /// <summary>
 /// Manages Quick Time Events during combat
+/// 
+/// QTE TUNING GUIDE:
+/// - qteWindowDuration: Controls how long the QTE window stays open
+///   • Easy: 0.7s - 1.0s (generous timing for all players)
+///   • Normal: 0.4s - 0.6s (skill-based timing)
+///   • Hard: 0.2s - 0.35s (requires quick reflexes)
+///   • Expert: 0.15s - 0.2s (very tight timing)
+///
+/// - qteWarningTime: How early to show "Get Ready!" warning
+///   • Short: 0.2s (minimal warning, harder)
+///   • Normal: 0.3s - 0.4s (standard warning time)
+///   • Long: 0.5s - 0.7s (more preparation time)
+///
+/// - perfectTimingWindow: Tolerance for perfect QTE bonus
+///   • Easy: 0.15s - 0.2s (wide perfect window)
+///   • Normal: 0.1s (centered in QTE window)
+///   • Hard: 0.05s - 0.08s (precise timing)
+///   • Expert: 0.03s - 0.05s (near frame-perfect)
+///
+/// DESIGN NOTE: QTE windows should be placed at impactful moments in animations
+/// Configure timing points in AttackAnimationData.asset (qteNormalizedTimings)
 /// </summary>
 public class QTEManager : MonoBehaviour
 {
     [Header("QTE Settings")]
+    [Tooltip("Duration of QTE window in seconds - INCREASE this to make QTEs easier")]
     [SerializeField] private float qteWindowDuration = 0.5f;
-    [SerializeField] private InputActionReference qteInputAction;
+    
+    [Tooltip("Warning time before QTE window opens (seconds) - Shows 'Get Ready!' prompt")]
+    [SerializeField] private float qteWarningTime = 0.3f;
     
     [Header("Timing")]
-    [Tooltip("Time window before and after perfect timing")]
+    [Tooltip("Perfect timing tolerance - INCREASE to make perfect QTE easier")]
     [SerializeField] private float perfectTimingWindow = 0.1f;
     
     public event Action OnQTESuccess;
@@ -27,6 +51,7 @@ public class QTEManager : MonoBehaviour
     
     public bool IsQTEActive => isQTEActive;
     public float CurrentQTEDuration => qteWindowDuration; // Expose duration for UI
+    public float WarningTime => qteWarningTime; // Expose warning time for AnimationSequencer
     
     // NOTE: Input checking removed - now handled by BattleInputManager
     // BattleInputManager will call ProcessQTEInput() when QTE button is pressed
@@ -48,18 +73,21 @@ public class QTEManager : MonoBehaviour
     /// </summary>
     public void ProcessQTEInput()
     {
+        Debug.Log($"<color=cyan>[QTEManager]</color> ⚡ ProcessQTEInput() CALLED! | isQTEActive: {isQTEActive}, qteCompleted: {qteCompleted}");
+        
         if (!isQTEActive)
         {
-            Debug.LogWarning("[QTEManager] ProcessQTEInput called but QTE is not active!");
+            Debug.LogWarning("<color=red>[QTEManager]</color> ❌ ProcessQTEInput called but QTE is NOT ACTIVE!");
             return;
         }
         
         if (qteCompleted)
         {
-            Debug.LogWarning("[QTEManager] QTE already completed!");
+            Debug.LogWarning("<color=yellow>[QTEManager]</color> ⚠️ QTE already completed!");
             return;
         }
         
+        Debug.Log($"<color=lime>[QTEManager]</color> ✅ QTE input validated, checking timing...");
         CheckQTETiming();
     }
     
@@ -68,9 +96,11 @@ public class QTEManager : MonoBehaviour
     /// </summary>
     public void StartQTEWindow()
     {
+        Debug.Log($"<color=cyan>[QTEManager]</color> 🎯 StartQTEWindow() CALLED!");
+        
         if (isQTEActive)
         {
-            Debug.LogWarning("QTE already active!");
+            Debug.LogWarning("<color=yellow>[QTEManager]</color> ⚠️ QTE already active!");
             return;
         }
         
@@ -78,10 +108,12 @@ public class QTEManager : MonoBehaviour
         qteStartTime = Time.time;
         qteCompleted = false;
         
-        OnQTEWindowStart?.Invoke(true);
+        Debug.Log($"<color=lime>[QTEManager]</color> ⚡ QTE WINDOW OPENED! Duration: {qteWindowDuration}s, StartTime: {qteStartTime}");
         
-        string actionName = qteInputAction != null ? qteInputAction.action.name : "QTE Button";
-        Debug.Log($"QTE Window Started! Press {actionName}");
+        OnQTEWindowStart?.Invoke(true);
+        Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTEWindowStart(true) event fired!");
+        
+        Debug.Log($"<color=yellow>⚡⚡⚡ QTE WINDOW ACTIVE - PRESS QTE BUTTON NOW! ⚡⚡⚡</color>");
     }
     
     /// <summary>
@@ -94,18 +126,23 @@ public class QTEManager : MonoBehaviour
         
         float deviation = Mathf.Abs(timeSinceStart - perfectTiming);
         
+        Debug.Log($"<color=cyan>[QTEManager]</color> 🎯 CheckQTETiming() | timeSinceStart: {timeSinceStart:F3}s, perfectTiming: {perfectTiming:F3}s, deviation: {deviation:F3}s, windowDuration: {qteWindowDuration}s");
+        
         if (deviation <= perfectTimingWindow)
         {
             // Perfect timing
+            Debug.Log($"<color=lime>[QTEManager]</color> 🌟 PERFECT TIMING! deviation {deviation:F3}s <= {perfectTimingWindow}s");
             SuccessQTE(true);
         }
         else if (timeSinceStart <= qteWindowDuration)
         {
             // Good timing, but not perfect
+            Debug.Log($"<color=lime>[QTEManager]</color> ✅ GOOD TIMING! timeSinceStart {timeSinceStart:F3}s <= {qteWindowDuration}s");
             SuccessQTE(false);
         }
         else
         {
+            Debug.Log($"<color=red>[QTEManager]</color> ❌ TOO LATE! timeSinceStart {timeSinceStart:F3}s > {qteWindowDuration}s");
             FailQTE();
         }
     }
@@ -118,10 +155,16 @@ public class QTEManager : MonoBehaviour
         qteCompleted = true;
         isQTEActive = false;
         
-        Debug.Log(wasPerfect ? "PERFECT QTE!" : "QTE Success!");
+        Debug.Log($"<color=lime>[QTEManager]</color> ✨ {(wasPerfect ? "PERFECT QTE!" : "QTE Success!")}");
+        
         OnQTESuccess?.Invoke();
+        Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTESuccess event fired!");
+        
         OnQTEWindowStart?.Invoke(false);
+        Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTEWindowStart(false) event fired!");
+        
         OnQTEWindowEnd?.Invoke();
+        Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTEWindowEnd event fired!");
     }
     
     /// <summary>
@@ -132,10 +175,16 @@ public class QTEManager : MonoBehaviour
         qteCompleted = true;
         isQTEActive = false;
         
-        Debug.Log("QTE Failed!");
+        Debug.Log($"<color=red>[QTEManager]</color> ❌ QTE Failed!");
+        
         OnQTEFail?.Invoke();
+        Debug.Log($"<color=red>[QTEManager]</color> 📢 OnQTEFail event fired!");
+        
         OnQTEWindowStart?.Invoke(false);
+        Debug.Log($"<color=cyan>[QTEManager]</color> 📢 OnQTEWindowStart(false) event fired!");
+        
         OnQTEWindowEnd?.Invoke();
+        Debug.Log($"<color=cyan>[QTEManager]</color> 📢 OnQTEWindowEnd event fired!");
     }
     
     /// <summary>

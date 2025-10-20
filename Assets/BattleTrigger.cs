@@ -10,6 +10,11 @@ public class BattleTrigger : MonoBehaviour
     [SerializeField] private bool autoStartBattle = true; // Start battle on trigger enter
     [SerializeField] private bool destroyOnBattleEnd = true; // Destroy enemy on victory
     
+    [Header("Combat Positioning (NEW)")]
+    [Tooltip("Optional: Use a BattlePositionSetup to define exact combat positions")]
+    [SerializeField] private BattlePositionSetup combatPositionSetup;
+    [SerializeField] private bool useLegacyPositioning = false; // Use old 30-unit positioning method
+    
     [Header("References")]
     [SerializeField] private Transform playerTransform; // Optional: Auto-finds player
     [SerializeField] private Transform enemyTransform; // Optional: Uses this GameObject if not assigned
@@ -111,11 +116,17 @@ public class BattleTrigger : MonoBehaviour
         // Activar UI de combate inmediatamente
         ActivateBattleUI();
         
-        // Posicionar jugador y enemigo para el combate
-        PositionCharactersForBattle();
-        
-        // Iniciar batalla después de un breve delay
-        Invoke(nameof(InitiateBattle), 0.5f);
+        // Posicionar jugador y enemigo para el combate (solo si se usa posicionamiento legacy)
+        if (useLegacyPositioning && combatPositionSetup == null)
+        {
+            PositionCharactersForBattle();
+            Invoke(nameof(InitiateBattle), 0.5f);
+        }
+        else
+        {
+            // Iniciar batalla inmediatamente - el BattleManager manejará el posicionamiento
+            InitiateBattle();
+        }
     }
     
     /// <summary>
@@ -214,10 +225,20 @@ public class BattleTrigger : MonoBehaviour
                 isSubscribedToBattle = true;
             }
             
-            // Pass this specific enemy to BattleManager
-            battleManager.StartBattleWithEnemy(thisEnemyController);
+            // Pass combat position setup to BattleManager if available
+            if (combatPositionSetup != null)
+            {
+                battleManager.StartBattleWithEnemy(thisEnemyController, combatPositionSetup);
+                if (debugMode) Debug.Log($"<color=cyan>[BattleTrigger] Battle initiated with custom positioning</color>");
+            }
+            else
+            {
+                // Use default positioning
+                battleManager.StartBattleWithEnemy(thisEnemyController);
+                if (debugMode) Debug.Log($"<color=cyan>[BattleTrigger] Battle initiated with default positioning</color>");
+            }
             
-            if (debugMode) Debug.Log($"<color=cyan>[BattleTrigger] Battle initiated with {thisEnemyController.name}</color>");
+            if (debugMode) Debug.Log($"<color=cyan>[BattleTrigger] Battle started with {thisEnemyController.name}</color>");
         }
         else
         {

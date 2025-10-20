@@ -16,7 +16,8 @@ public class EnemyBattleController : MonoBehaviour
     [SerializeField] private float attackDuration = 2f;
 
     [Header("Attack Timing")]
-    [SerializeField] private float parryWindowStartTime = 1.5f; // When to open parry window
+    // Note: Parry window open delay is now configured in ParrySystem.cs
+    // This value controls when damage is actually applied (after parry window)
     [SerializeField] private float damageApplicationTime = 1.7f; // When damage is dealt
 
     [Header("AI Settings")]
@@ -93,11 +94,12 @@ public class EnemyBattleController : MonoBehaviour
         // Play attack animation
         if (enemyCharacter?.Animator != null)
         {
-            enemyCharacter.Animator.Play(attackAnimationName);
+            enemyCharacter.Animator.Play(attackAnimationName, 0);
             Debug.Log($"Playing enemy attack animation: {attackAnimationName}");
         }
 
-        // Wait until parry window timing
+        // Wait until parry window timing (get from ParrySystem)
+        float parryWindowStartTime = parrySystem != null ? parrySystem.WindowOpenDelay : 0.4f;
         yield return new WaitForSeconds(parryWindowStartTime);
 
         // Open parry window

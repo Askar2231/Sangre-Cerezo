@@ -24,4 +24,4 @@ MonoBehaviour:
   baseDamage: 25
   qteSuccessMultiplier: 1.5
   hitNormalizedTime: 0.75
-  staminaCost: 35
+  staminaCost: 30

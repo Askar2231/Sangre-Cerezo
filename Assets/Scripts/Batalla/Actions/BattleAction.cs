@@ -11,13 +11,15 @@ public abstract class BattleAction
     
     protected BattleCharacter performer;
     protected BattleCharacter target;
+    protected BattleNotificationSystem notificationSystem;
     
     public event Action OnActionComplete;
     
-    public BattleAction(BattleCharacter performer, BattleCharacter target)
+    public BattleAction(BattleCharacter performer, BattleCharacter target, BattleNotificationSystem notificationSystem = null)
     {
         this.performer = performer;
         this.target = target;
+        this.notificationSystem = notificationSystem;
     }
     
     /// <summary>

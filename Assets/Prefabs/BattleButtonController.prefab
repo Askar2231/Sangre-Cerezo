@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7994731682449351384
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8742959543599079609}
+  - component: {fileID: 49147887729888209}
+  m_Layer: 5
+  m_Name: BattleButtonController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &8742959543599079609
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7994731682449351384}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &49147887729888209
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7994731682449351384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 010f697daa6a34e458f3c6a8773fead4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lightAttackButton: {fileID: 0}
+  heavyAttackButton: {fileID: 0}
+  skill1Button: {fileID: 0}
+  skill2Button: {fileID: 0}
+  parryButton: {fileID: 0}
+  qteButton: {fileID: 0}
+  lightAttackAction: {fileID: 164343921830019363, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  heavyAttackAction: {fileID: -2600636955578388467, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  skill1Action: {fileID: -3849579488180138378, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  skill2Action: {fileID: 881119440921384340, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  parryAction: {fileID: 1970675492414625143, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  qteAction: {fileID: -876638315331924717, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  lightAttackText: {fileID: 0}
+  heavyAttackText: {fileID: 0}
+  skill1Text: {fileID: 0}
+  skill2Text: {fileID: 0}
+  parryText: {fileID: 0}
+  qteText: {fileID: 0}
+  inputManager: {fileID: 0}
+  parrySystem: {fileID: 0}
+  qteManager: {fileID: 0}
+  showInputIcons: 1
+  debugMode: 0

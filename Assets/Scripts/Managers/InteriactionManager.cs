@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro; 
 using System.Collections.Generic;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 
 public class InteractionManager : MonoBehaviour
@@ -15,8 +16,17 @@ public class InteractionManager : MonoBehaviour
     public GameObject choicesContainer;
     public GameObject choiceButtonPrefab;
 
+    [Header("Input Actions")]
+    [Tooltip("Input action for Choice 1 (drag from Input Actions asset) !! Will not update text/icons dynamically !!")]
+    public InputActionReference choice1Action;
+    
+    [Tooltip("Input action for Choice 2 (drag from Input Actions asset) !! Will not update text/icons dynamically !!")]
+    public InputActionReference choice2Action;
+
     private Queue<string> sentences;
     private List<Button> currentChoiceButtons;
+    private float choiceInputCooldown = 0f;
+    private const float CHOICE_INPUT_COOLDOWN_TIME = 0.3f; // Prevent interact button from triggering choices
 
     private void Awake()
     {
@@ -84,6 +94,9 @@ public class InteractionManager : MonoBehaviour
 
         currentChoiceButtons.Clear();
         choicesContainer.SetActive(true);
+        
+        // Start cooldown when displaying choices to prevent immediate selection
+        choiceInputCooldown = CHOICE_INPUT_COOLDOWN_TIME;
         
         for (int i = 0; i < dec.choices.Count; i++)
         {
@@ -172,26 +185,54 @@ public class InteractionManager : MonoBehaviour
 
     void Update()
     {
+        // Update cooldown timer
+        if (choiceInputCooldown > 0f)
+        {
+            choiceInputCooldown -= Time.deltaTime;
+        }
+        
         if (currentChoiceButtons.Count > 0)
         {
-            // Opción 1 - Tecla Q o Botón X del mando
-            if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.JoystickButton2))
+            // Don't process choice input if we're on cooldown
+            if (choiceInputCooldown > 0f)
             {
-                if (currentChoiceButtons.Count > 0)
-                {
-                    Debug.Log("<color=cyan>Opción 1 seleccionada (Q o X mando)</color>");
-                    currentChoiceButtons[0].onClick.Invoke(); 
-                }
+                return;
             }
             
-            // Opción 2 - Tecla R o Botón B del mando
-            else if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.JoystickButton1))
+            // Check Choice 1 input using InputActionReference if available, fallback to legacy input
+            bool choice1Pressed = false;
+            if (choice1Action != null && choice1Action.action != null)
             {
-                if (currentChoiceButtons.Count > 1)
-                {
-                    Debug.Log("<color=magenta>Opción 2 seleccionada (R o B mando)</color>");
-                    currentChoiceButtons[1].onClick.Invoke(); 
-                }
+                choice1Pressed = choice1Action.action.WasPressedThisFrame();
+            }
+            else
+            {
+                // Fallback to legacy input
+                choice1Pressed = Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.JoystickButton2);
+            }
+            
+            if (choice1Pressed && currentChoiceButtons.Count > 0)
+            {
+                Debug.Log("<color=cyan>Opción 1 seleccionada</color>");
+                currentChoiceButtons[0].onClick.Invoke(); 
+            }
+            
+            // Check Choice 2 input using InputActionReference if available, fallback to legacy input
+            bool choice2Pressed = false;
+            if (choice2Action != null && choice2Action.action != null)
+            {
+                choice2Pressed = choice2Action.action.WasPressedThisFrame();
+            }
+            else
+            {
+                // Fallback to legacy input
+                choice2Pressed = Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.JoystickButton1);
+            }
+            
+            if (choice2Pressed && currentChoiceButtons.Count > 1)
+            {
+                Debug.Log("<color=magenta>Opción 2 seleccionada</color>");
+                currentChoiceButtons[1].onClick.Invoke(); 
             }
         }
     }

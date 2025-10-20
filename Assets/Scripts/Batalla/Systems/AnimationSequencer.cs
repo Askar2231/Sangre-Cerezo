@@ -11,8 +11,8 @@ public class AnimationSequencer : MonoBehaviour
 {
     [SerializeField] private Animator animator;
     
-    [Header("QTE Warning Settings")]
-    [SerializeField] private float qteWarningTime = 0.3f; // Seconds before QTE to show warning
+    // Note: QTE warning time is now configured in QTEManager.cs
+    // AnimationSequencer queries it from QTEManager.WarningTime
     
     private AttackAnimationData currentAttackData;
     private HashSet<int> triggeredQTEIndices = new HashSet<int>();
@@ -62,8 +62,8 @@ public class AnimationSequencer : MonoBehaviour
         // Get animation length
         animationLength = GetAnimationLength(attackData.animationStateName);
         
-        // Play the animation
-        animator.Play(attackData.animationStateName);
+        // Play the animation on layer 0
+        animator.Play(attackData.animationStateName, 0, 0f);
         
         // Start tracking
         StartCoroutine(TrackAnimationProgress());
@@ -156,14 +156,15 @@ public class AnimationSequencer : MonoBehaviour
     {
         if (currentAttackData.qteNormalizedTimings == null || qteVisualFeedback == null) return;
         if (animationLength <= 0) return; // Need animation length for warning calculation
+        if (qteManager == null) return; // Need QTEManager for warning time
         
         for (int i = 0; i < currentAttackData.qteNormalizedTimings.Count; i++)
         {
             float qteTime = currentAttackData.qteNormalizedTimings[i];
             
-            // Calculate warning time in normalized time
+            // Calculate warning time in normalized time using QTEManager's warning time
             // warningTime (seconds) -> normalized time = warningTime / animationLength
-            float warningOffset = qteWarningTime / animationLength;
+            float warningOffset = qteManager.WarningTime / animationLength;
             float warningTime = Mathf.Max(0, qteTime - warningOffset);
             
             // Check if we've crossed the warning timing
@@ -210,11 +211,14 @@ public class AnimationSequencer : MonoBehaviour
     {
         isPlayingSequence = false;
         
-        // FORZAR animador de vuelta a Idle/Standby
+        // Reset to default state - since you use a blend tree, just let the animator 
+        // transition naturally back to the entry state via transitions
+        // No need to force Play() which causes the layer index error
         if (animator != null)
         {
-            animator.Play("Idle"); // O el nombre de tu estado base
-            Debug.Log("Animation forced back to Idle state");
+            // Optional: Set Speed to 0 to ensure blend tree shows idle
+            animator.SetFloat("Speed", 0f);
+            Debug.Log("Animation sequence completed, returning to blend tree");
         }
         
         onAnimationComplete?.Invoke();
@@ -244,12 +248,27 @@ public class AnimationSequencer : MonoBehaviour
     {
         if (animator == null || animator.runtimeAnimatorController == null)
             return 0f;
-        
+
         AnimationClip[] clips = animator.runtimeAnimatorController.animationClips;
+        Debug.Log(clips.Length + " animation clips found in controller.");
+        
+        // Strategy 1: Try to find clip by exact state name match
         foreach (AnimationClip clip in clips)
         {
+            Debug.Log($"Checking clip '{clip.name}' against state '{stateName}'");
             if (clip.name == stateName)
             {
+                Debug.Log($"Found animation clip '{clip.name}' with length {clip.length}s");
+                return clip.length;
+            }
+        }
+        
+        // Strategy 2: Try to find clip with similar name (case insensitive, contains)
+        foreach (AnimationClip clip in clips)
+        {
+            if (clip.name.IndexOf(stateName, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                Debug.Log($"Found similar animation clip '{clip.name}' for state '{stateName}' with length {clip.length}s");
                 return clip.length;
             }
         }

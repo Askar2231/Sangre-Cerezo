@@ -14,8 +14,8 @@ public class SkillAction : BattleAction
     public override ActionType ActionType => ActionType.Skill;
     
     public SkillAction(BattleCharacter performer, BattleCharacter target, 
-                       SkillData skillData, Animator animator) 
-        : base(performer, target)
+                       SkillData skillData, Animator animator, BattleNotificationSystem notificationSystem = null) 
+        : base(performer, target, notificationSystem)
     {
         this.skillData = skillData;
         this.animator = animator;
@@ -26,7 +26,15 @@ public class SkillAction : BattleAction
     {
         if (!CanExecute())
         {
-            Debug.LogWarning("Cannot execute skill - insufficient stamina");
+            // Show notification if available, otherwise log
+            if (notificationSystem != null)
+            {
+                notificationSystem.ShowInsufficientResources("habilidad");
+            }
+            else
+            {
+                Debug.LogWarning("Cannot execute skill - insufficient stamina");
+            }
             CompleteAction();
             return;
         }

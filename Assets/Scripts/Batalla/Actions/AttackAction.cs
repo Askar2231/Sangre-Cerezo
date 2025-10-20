@@ -18,8 +18,9 @@ public class AttackAction : BattleAction
     public AttackAction(BattleCharacter performer, BattleCharacter target, 
                         AttackAnimationData attackData,
                         AnimationSequencer animationSequencer,
-                        QTEManager qteManager) 
-        : base(performer, target)
+                        QTEManager qteManager,
+                        BattleNotificationSystem notificationSystem = null) 
+        : base(performer, target, notificationSystem)
     {
         this.attackData = attackData;
         this.animationSequencer = animationSequencer;
@@ -30,7 +31,15 @@ public class AttackAction : BattleAction
     {
         if (!CanExecute())
         {
-            Debug.LogWarning("Cannot execute attack - insufficient stamina");
+            // Show notification if available, otherwise log
+            if (notificationSystem != null)
+            {
+                notificationSystem.ShowInsufficientResources("ataque");
+            }
+            else
+            {
+                Debug.LogWarning("Cannot execute attack - insufficient stamina");
+            }
             CompleteAction();
             return;
         }

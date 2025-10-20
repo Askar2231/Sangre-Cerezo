@@ -23,6 +23,7 @@ public class PlayerBattleController : MonoBehaviour
     // Components
     private AnimationSequencer animationSequencer;
     private QTEManager qteManager;
+    private BattleNotificationSystem notificationSystem;
     
     // Current action being executed
     private BattleAction currentAction;
@@ -41,10 +42,11 @@ public class PlayerBattleController : MonoBehaviour
         }
     }
 
-    public void Initialize(AnimationSequencer animSequencer, QTEManager qte)
+    public void Initialize(AnimationSequencer animSequencer, QTEManager qte, BattleNotificationSystem notifSystem = null)
     {
         animationSequencer = animSequencer;
         qteManager = qte;
+        notificationSystem = notifSystem;
 
         if (animationSequencer == null)
         {
@@ -78,7 +80,8 @@ public class PlayerBattleController : MonoBehaviour
                 target,
                 lightAttackData,
                 animationSequencer,
-                qteManager
+                qteManager,
+                notificationSystem
             );
             
             // Subscribe to completion
@@ -127,7 +130,8 @@ public class PlayerBattleController : MonoBehaviour
                 target,
                 heavyAttackData,
                 animationSequencer,
-                qteManager
+                qteManager,
+                notificationSystem
             );
             
             // Subscribe to completion
@@ -182,7 +186,8 @@ public class PlayerBattleController : MonoBehaviour
                 playerCharacter,
                 target,
                 skill,
-                playerCharacter.Animator
+                playerCharacter.Animator,
+                notificationSystem
             );
             
             // Subscribe to completion
