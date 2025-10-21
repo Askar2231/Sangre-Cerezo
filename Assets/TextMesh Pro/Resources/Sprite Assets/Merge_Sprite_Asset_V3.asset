@@ -697,7 +697,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 132
     m_Scale: 1
-    m_Name: Joy_Right_Stick_Press
+    m_Name: Joy_R3
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 133
@@ -727,12 +727,12 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 138
     m_Scale: 1
-    m_Name: Joy_Left_Stick
+    m_Name: Joy_LS
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 139
     m_Scale: 1
-    m_Name: Joy_Right_Stick
+    m_Name: Joy_RS
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 140
@@ -927,7 +927,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 178
     m_Scale: 1
-    m_Name: Joy_Left_Stick_Press
+    m_Name: adsadsad
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 179
@@ -942,7 +942,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 181
     m_Scale: 1
-    m_Name: Merge_Sprites_V2_145
+    m_Name: Joy_L3
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 182
@@ -1302,7 +1302,7 @@ MonoBehaviour:
     m_Unicode: 65534
     m_GlyphIndex: 253
     m_Scale: 1
-    m_Name: Merge_Sprites_V2_253
+    m_Name: Key_ESC
   - m_ElementType: 2
     m_Unicode: 65534
     m_GlyphIndex: 254

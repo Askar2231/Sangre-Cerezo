@@ -156,12 +156,18 @@ public class InteractionManager : MonoBehaviour
     {
         Debug.Log($"<color=yellow>SelectChoice llamado para: {choice.choiceText}</color>");
         Debug.Log($"<color=yellow>Choice ID: {choice.choiceId}</color>");
+        Debug.Log($"<color=yellow>Karma Effect: {choice.karmaEffect}</color>");
         Debug.Log($"<color=yellow>End Interaction: {choice.endInteractionOnSelect}</color>");
         
         // Aplicar efecto de karma
         if (choice.karmaEffect != 0)
         {
+            Debug.Log($"<color=cyan>[InteractionManager]</color> 📊 Aplicando karma: {(choice.karmaEffect > 0 ? "+" : "")}{choice.karmaEffect}");
             KarmaManager.Instance.AddKarma(choice.karmaEffect);
+        }
+        else
+        {
+            Debug.Log($"<color=gray>[InteractionManager]</color> Esta elección no tiene efecto de karma configurado");
         }
 
         // PRIMERO ejecutar el callback a través del ChoiceEventSystem

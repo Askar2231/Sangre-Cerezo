@@ -60,10 +60,27 @@ public class QTEManager : MonoBehaviour
     {
         if (!isQTEActive) return;
         
-        // Check if window expired (time-based expiration still handled here)
-        if (Time.time >= qteStartTime + qteWindowDuration && !qteCompleted)
+        // Check if window duration has fully expired
+        if (Time.time >= qteStartTime + qteWindowDuration)
         {
-            FailQTE();
+            if (!qteCompleted)
+            {
+                // Player didn't press button - fail the QTE
+                FailQTE();
+            }
+            else
+            {
+                // Player pressed button earlier - now close the window after full duration
+                isQTEActive = false;
+                
+                Debug.Log($"<color=cyan>[QTEManager]</color> ⏱️ Full window duration expired, closing window now");
+                
+                OnQTEWindowStart?.Invoke(false);
+                Debug.Log($"<color=cyan>[QTEManager]</color> 📢 OnQTEWindowStart(false) event fired!");
+                
+                OnQTEWindowEnd?.Invoke();
+                Debug.Log($"<color=cyan>[QTEManager]</color> 📢 OnQTEWindowEnd event fired!");
+            }
         }
     }
     
@@ -153,29 +170,28 @@ public class QTEManager : MonoBehaviour
     private void SuccessQTE(bool wasPerfect)
     {
         qteCompleted = true;
-        isQTEActive = false;
+        // NOTE: Keep isQTEActive = true until full window duration expires
+        // This keeps the visual indicator visible for the full window duration
         
         Debug.Log($"<color=lime>[QTEManager]</color> ✨ {(wasPerfect ? "PERFECT QTE!" : "QTE Success!")}");
         
         OnQTESuccess?.Invoke();
         Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTESuccess event fired!");
         
-        OnQTEWindowStart?.Invoke(false);
-        Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTEWindowStart(false) event fired!");
-        
-        OnQTEWindowEnd?.Invoke();
-        Debug.Log($"<color=lime>[QTEManager]</color> 📢 OnQTEWindowEnd event fired!");
+        // NOTE: Do NOT fire window end events here
+        // Let Update() handle closing the window after full duration
+        Debug.Log($"<color=yellow>[QTEManager]</color> ⏱️ QTE successful but keeping window open until full duration expires");
     }
     
     /// <summary>
-    /// QTE failed
+    /// QTE failed (window expired without input)
     /// </summary>
     private void FailQTE()
     {
         qteCompleted = true;
         isQTEActive = false;
         
-        Debug.Log($"<color=red>[QTEManager]</color> ❌ QTE Failed!");
+        Debug.Log($"<color=red>[QTEManager]</color> ❌ QTE Failed! Window expired.");
         
         OnQTEFail?.Invoke();
         Debug.Log($"<color=red>[QTEManager]</color> 📢 OnQTEFail event fired!");

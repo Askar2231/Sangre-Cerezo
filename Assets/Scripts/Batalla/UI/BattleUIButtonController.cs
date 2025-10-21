@@ -16,6 +16,7 @@ public class BattleUIButtonController : MonoBehaviour
     [SerializeField] private Button heavyAttackButton;
     [SerializeField] private Button skill1Button;
     [SerializeField] private Button skill2Button;
+    [SerializeField] private Button endTurnButton;
     
     [Header("Timing Button References (Dynamic)")]
     [SerializeField] private Button parryButton;
@@ -33,6 +34,8 @@ public class BattleUIButtonController : MonoBehaviour
     [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference skill2Action;
     [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
+    [SerializeField] private InputActionReference endTurnAction;
+    [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference parryAction;
     [Tooltip("DISPLAY ONLY: Used to show keyboard/gamepad icon on button - Input handled by BattleInputManager")]
     [SerializeField] private InputActionReference qteAction;
@@ -42,6 +45,7 @@ public class BattleUIButtonController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI heavyAttackText;
     [SerializeField] private TextMeshProUGUI skill1Text;
     [SerializeField] private TextMeshProUGUI skill2Text;
+    [SerializeField] private TextMeshProUGUI endTurnText;
     [SerializeField] private TextMeshProUGUI parryText;
     [SerializeField] private TextMeshProUGUI qteText;
     
@@ -65,6 +69,8 @@ public class BattleUIButtonController : MonoBehaviour
     [Obsolete("Use BattleInputManager events instead")]
     public event Action OnSkill2Pressed;
     [Obsolete("Use BattleInputManager events instead")]
+    public event Action OnEndTurnPressed;
+    [Obsolete("Use BattleInputManager events instead")]
     public event Action OnParryPressed;
     [Obsolete("Use BattleInputManager events instead")]
     public event Action OnQTEPressed;
@@ -87,6 +93,9 @@ public class BattleUIButtonController : MonoBehaviour
         
         if (skill2Button != null)
             skill2Button.onClick.AddListener(() => TriggerSkill2());
+        
+        if (endTurnButton != null)
+            endTurnButton.onClick.AddListener(() => TriggerEndTurn());
         
         // Subscribe to timing button clicks
         if (parryButton != null)
@@ -134,6 +143,9 @@ public class BattleUIButtonController : MonoBehaviour
         if (skill2Button != null)
             skill2Button.onClick.RemoveAllListeners();
         
+        if (endTurnButton != null)
+            endTurnButton.onClick.RemoveAllListeners();
+        
         // Unsubscribe from timing button clicks
         if (parryButton != null)
             parryButton.onClick.RemoveAllListeners();
@@ -171,6 +183,7 @@ public class BattleUIButtonController : MonoBehaviour
         SetButtonInteractable(heavyAttackButton, true);
         SetButtonInteractable(skill1Button, true);
         SetButtonInteractable(skill2Button, true);
+        SetButtonInteractable(endTurnButton, true);
         
         if (debugMode)
         {
@@ -190,6 +203,7 @@ public class BattleUIButtonController : MonoBehaviour
         SetButtonInteractable(heavyAttackButton, false);
         SetButtonInteractable(skill1Button, false);
         SetButtonInteractable(skill2Button, false);
+        SetButtonInteractable(endTurnButton, false);
         
         if (debugMode)
         {
@@ -206,6 +220,7 @@ public class BattleUIButtonController : MonoBehaviour
         SetButtonVisible(heavyAttackButton, visible);
         SetButtonVisible(skill1Button, visible);
         SetButtonVisible(skill2Button, visible);
+        SetButtonVisible(endTurnButton, visible);
     }
     
     /// <summary>
@@ -408,6 +423,23 @@ public class BattleUIButtonController : MonoBehaviour
         #pragma warning restore CS0618
     }
     
+    private void TriggerEndTurn()
+    {
+        if (!isInputEnabled) return;
+        
+        if (debugMode)
+        {
+            Debug.Log("[BattleUIButtons] End Turn button clicked");
+        }
+        
+        // Route through BattleInputManager (NEW)
+        if (inputManager != null)
+        {
+            inputManager.TriggerEndTurn();
+        }
+
+    }
+    
     private void TriggerParry()
     {
         Debug.Log($"<color=cyan>[BattleUIButtons]</color> 🛡️ TriggerParry() CALLED! isParryWindowActive={isParryWindowActive}");
@@ -537,6 +569,12 @@ public class BattleUIButtonController : MonoBehaviour
         {
             string iconText = InputIconMapper.Instance.GetSpriteOrText(InputAction.Skill2);
             skill2Text.text = $"Habilidad 2 {iconText}";
+        }
+        
+        if (endTurnText != null)
+        {
+            string iconText = InputIconMapper.Instance.GetSpriteOrText(InputAction.EndTurn);
+            endTurnText.text = $"Terminar turno {iconText}";
         }
         
         // Update timing buttons

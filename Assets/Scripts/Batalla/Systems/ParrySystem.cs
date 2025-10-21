@@ -55,6 +55,7 @@ public class ParrySystem : MonoBehaviour
     public bool IsParryWindowActive => isParryWindowActive;
     public float StaminaReward => staminaRewardOnSuccessfulParry;
     public float WindowOpenDelay => parryWindowOpenDelay; // Expose delay for EnemyBattleController
+    public float ParryWindowDuration => parryWindowDuration; // Expose duration for EnemyBattleController
 
     // NOTE: Input checking removed - now handled by BattleInputManager
     // BattleInputManager will call ProcessParryInput() when parry button is pressed
@@ -63,10 +64,23 @@ public class ParrySystem : MonoBehaviour
     {
         if (!isParryWindowActive) return;
 
-        // Close window after duration (time-based expiration still handled here)
+        // Check if window duration has fully expired
         if (Time.time >= parryWindowStartTime + parryWindowDuration)
         {
-            CloseParryWindow();
+            if (!parryAttempted)
+            {
+                // Player didn't press parry button - close as missed
+                CloseParryWindow();
+            }
+            else
+            {
+                // Player pressed parry earlier - now close the window after full duration
+                isParryWindowActive = false;
+                
+                Debug.Log($"<color=cyan>[ParrySystem]</color> ⏱️ Full window duration expired, closing window now");
+                OnParryWindowActive?.Invoke(false);
+                Debug.Log($"<color=cyan>[ParrySystem]</color> 📢 OnParryWindowActive(false) event fired!");
+            }
         }
     }
     
@@ -76,10 +90,16 @@ public class ParrySystem : MonoBehaviour
     /// </summary>
     public void ProcessParryInput()
     {
+        Debug.Log("==========================================================");
+        Debug.Log("⚡⚡⚡ PARRY BUTTON PRESSED! ⚡⚡⚡");
+        Debug.Log("==========================================================");
         Debug.Log($"<color=cyan>[ParrySystem]</color> 🛡️ ProcessParryInput() CALLED! | isParryWindowActive: {isParryWindowActive}, parryAttempted: {parryAttempted}");
         
         if (!isParryWindowActive)
         {
+            Debug.LogWarning("==========================================================");
+            Debug.LogWarning("❌❌❌ PARRY REJECTED - WINDOW NOT ACTIVE! ❌❌❌");
+            Debug.LogWarning("==========================================================");
             Debug.LogWarning("<color=red>[ParrySystem]</color> ❌ ProcessParryInput called but window is NOT ACTIVE!");
             return;
         }
@@ -97,9 +117,15 @@ public class ParrySystem : MonoBehaviour
     /// <summary>
     /// Open parry window (called right before enemy attack lands)
     /// </summary>
+    [ContextMenu("TEST: Force Open Parry Window")]
     public void OpenParryWindow()
     {
+        Debug.Log("==========================================================");
+        Debug.Log("🛡️🛡️🛡️ PARRY WINDOW OPENING 🛡️🛡️🛡️");
+        Debug.Log("==========================================================");
         Debug.Log($"<color=cyan>[ParrySystem]</color> 🎯 OpenParryWindow() CALLED!");
+        Debug.Log($"<color=magenta>[ParrySystem]</color> 🔧 THIS IS THE MODIFIED ParrySystem.cs - If you see this, the code is executing!");
+        Debug.Log($"<color=magenta>[ParrySystem]</color> 🔧 parryWindowDuration is currently: {parryWindowDuration}s");
         
         if (isParryWindowActive)
         {
@@ -117,6 +143,7 @@ public class ParrySystem : MonoBehaviour
         Debug.Log($"<color=lime>[ParrySystem]</color> 📢 OnParryWindowActive(true) event fired!");
         
         Debug.Log($"<color=yellow>⚔️⚔️⚔️ PARRY WINDOW ACTIVE - PRESS PARRY BUTTON NOW! ⚔️⚔️⚔️</color>");
+        Debug.Log("==========================================================");
     }
 
     /// <summary>
@@ -140,22 +167,37 @@ public class ParrySystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Parry was successful
+    /// Parry was successful - Triggers IMMEDIATE animation and rewards
+    /// Window stays open for full duration but animation plays NOW
     /// </summary>
     private void SuccessfulParry(bool wasPerfect)
     {
-        isParryWindowActive = false;
+        // NOTE: Keep isParryWindowActive = true until full window duration expires
+        // This keeps the visual indicator visible for the full window duration
+        parryAttempted = true;
 
         Debug.Log($"<color=lime>[ParrySystem]</color> ✨ {(wasPerfect ? "PERFECT PARRY!" : "Parry Success!")}");
         
+        // DEBUG: Check if anyone is subscribed to events
+        Debug.Log($"<color=cyan>[ParrySystem]</color> 🔍 OnParrySuccess subscribers: {(OnParrySuccess != null ? OnParrySuccess.GetInvocationList().Length.ToString() : "NULL/NONE")}");
+        Debug.Log($"<color=cyan>[ParrySystem]</color> 🔍 OnParrySuccessWithTiming subscribers: {(OnParrySuccessWithTiming != null ? OnParrySuccessWithTiming.GetInvocationList().Length.ToString() : "NULL/NONE")}");
+        
+        // Fire success event - triggers stamina reward and counter-attack setup
+        Debug.Log($"<color=yellow>[ParrySystem]</color> 📤 About to invoke OnParrySuccess...");
         OnParrySuccess?.Invoke();
         Debug.Log($"<color=lime>[ParrySystem]</color> 📢 OnParrySuccess event fired!");
         
-        OnParrySuccessWithTiming?.Invoke(wasPerfect); // Event with perfect timing info
-        Debug.Log($"<color=lime>[ParrySystem]</color> 📢 OnParrySuccessWithTiming({wasPerfect}) event fired!");
+        // Fire timing event - triggers IMMEDIATE parry animation playback
+        // BattleManagerV2 receives this and calls PlayerBattleController.PlayParryAnimation()
+        // Animation plays instantly via Animator.Play("Parry", 0, 0f)
+        Debug.Log($"<color=yellow>[ParrySystem]</color> 📤 About to invoke OnParrySuccessWithTiming({wasPerfect})...");
+        OnParrySuccessWithTiming?.Invoke(wasPerfect);
+        Debug.Log($"<color=lime>[ParrySystem]</color> 📢 OnParrySuccessWithTiming({wasPerfect}) event fired! → Animation plays NOW");
         
-        OnParryWindowActive?.Invoke(false);
-        Debug.Log($"<color=lime>[ParrySystem]</color> 📢 OnParryWindowActive(false) event fired!");
+        // NOTE: Do NOT fire OnParryWindowActive(false) here
+        // Let Update() handle closing the window after full duration
+        // This keeps parry indicator visible while animation plays
+        Debug.Log($"<color=yellow>[ParrySystem]</color> ⏱️ Parry successful but keeping window open until full duration expires");
     }
 
     /// <summary>

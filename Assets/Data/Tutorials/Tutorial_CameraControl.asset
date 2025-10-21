@@ -16,8 +16,7 @@ MonoBehaviour:
   tutorialType: 0
   showOnlyOnce: 1
   pauseGame: 0
-  dialogText: "Usa el rat\xF3n o el stick derecho para controlar la c\xE1mara y mirar
-    a tu alrededor.\r"
+  dialogText: "Usa {MoveCamera} para controlar la c\xE1mara y mirar a tu alrededor.\r"
   dialogPosition: 1
   displayDuration: 5
   cards: []

@@ -36,6 +36,7 @@ public enum InputDeviceType
 public enum InputAction
 {
     Move,
+    MoveCamera,
     Run,
     Interact,
     QTE,
