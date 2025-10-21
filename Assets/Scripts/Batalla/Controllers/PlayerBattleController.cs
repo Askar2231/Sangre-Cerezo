@@ -24,7 +24,7 @@ public class PlayerBattleController : MonoBehaviour
     private AnimationSequencer animationSequencer;
     private QTEManager qteManager;
     private BattleNotificationSystem notificationSystem;
-    
+
     // Current action being executed
     private BattleAction currentAction;
 
@@ -73,7 +73,7 @@ public class PlayerBattleController : MonoBehaviour
         if (animationSequencer != null && qteManager != null && lightAttackData != null)
         {
             Debug.Log("Executing attack through AttackAction system");
-            
+
             // Create attack action
             currentAction = new AttackAction(
                 playerCharacter,
@@ -83,10 +83,10 @@ public class PlayerBattleController : MonoBehaviour
                 qteManager,
                 notificationSystem
             );
-            
+
             // Subscribe to completion
             currentAction.OnActionComplete += HandleActionComplete;
-            
+
             // Execute the action
             currentAction.Execute();
         }
@@ -123,7 +123,7 @@ public class PlayerBattleController : MonoBehaviour
         if (animationSequencer != null && qteManager != null && heavyAttackData != null)
         {
             Debug.Log("Executing heavy attack through AttackAction system");
-            
+
             // Create attack action
             currentAction = new AttackAction(
                 playerCharacter,
@@ -133,10 +133,10 @@ public class PlayerBattleController : MonoBehaviour
                 qteManager,
                 notificationSystem
             );
-            
+
             // Subscribe to completion
             currentAction.OnActionComplete += HandleActionComplete;
-            
+
             // Execute the action
             currentAction.Execute();
         }
@@ -180,7 +180,7 @@ public class PlayerBattleController : MonoBehaviour
         if (playerCharacter?.Animator != null && skill != null)
         {
             Debug.Log($"Executing skill through SkillAction system: {skill.skillName}");
-            
+
             // Create skill action
             currentAction = new SkillAction(
                 playerCharacter,
@@ -189,10 +189,10 @@ public class PlayerBattleController : MonoBehaviour
                 playerCharacter.Animator,
                 notificationSystem
             );
-            
+
             // Subscribe to completion
             currentAction.OnActionComplete += HandleActionComplete;
-            
+
             // Execute the action
             currentAction.Execute();
         }
@@ -233,16 +233,16 @@ public class PlayerBattleController : MonoBehaviour
             currentAction.OnActionComplete -= HandleActionComplete;
             currentAction = null;
         }
-        
+
         // Notify battle manager
         OnActionComplete?.Invoke();
-        
+
         // Haptic feedback
         if (GamepadVibrationManager.Instance != null)
         {
             GamepadVibrationManager.Instance.VibrateOnLightAttack();
         }
-        
+
         Debug.Log("Player action completed");
     }
 
@@ -252,7 +252,7 @@ public class PlayerBattleController : MonoBehaviour
     private void ExecuteAttackDamageFallback(BattleCharacter target, bool isHeavy = false)
     {
         AttackAnimationData attackData = isHeavy ? heavyAttackData : lightAttackData;
-        
+
         if (attackData == null)
         {
             Debug.LogError($"{(isHeavy ? "Heavy" : "Light")} attack data is null!");
@@ -308,6 +308,10 @@ public class PlayerBattleController : MonoBehaviour
                 return lightAttackData != null &&
                        playerCharacter.StaminaManager.HasEnoughStamina(lightAttackData.staminaCost);
 
+            case ActionType.HeavyAttack:
+                return heavyAttackData != null &&
+                       playerCharacter.StaminaManager.HasEnoughStamina(heavyAttackData.staminaCost);
+
             case ActionType.Skill:
                 // Check if any skill is available
                 foreach (var skill in availableSkills)
@@ -332,9 +336,35 @@ public class PlayerBattleController : MonoBehaviour
             case ActionType.LightAttack:
                 return lightAttackData != null ? lightAttackData.staminaCost : 0f;
 
+            case ActionType.HeavyAttack:
+                return heavyAttackData != null ? heavyAttackData.staminaCost : 0f;
+
             case ActionType.Skill:
                 if (skillIndex >= 0 && skillIndex < availableSkills.Length && availableSkills[skillIndex] != null)
-                    return availableSkills[skillIndex].staminaCost; // Ya está correcto
+                    return availableSkills[skillIndex].staminaCost;
+                return 0f;
+
+            default:
+                return 0f;
+        }
+    }
+
+    /// <summary>
+    /// Get base damage for an action
+    /// </summary>
+    public float GetActionDamage(ActionType actionType, int skillIndex = 0)
+    {
+        switch (actionType)
+        {
+            case ActionType.LightAttack:
+                return lightAttackData != null ? lightAttackData.baseDamage : 0f;
+
+            case ActionType.HeavyAttack:
+                return heavyAttackData != null ? heavyAttackData.baseDamage : 0f;
+
+            case ActionType.Skill:
+                if (skillIndex >= 0 && skillIndex < availableSkills.Length && availableSkills[skillIndex] != null)
+                    return availableSkills[skillIndex].damageAmount;
                 return 0f;
 
             default:
