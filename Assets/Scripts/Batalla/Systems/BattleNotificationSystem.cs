@@ -73,6 +73,7 @@ public class BattleNotificationSystem : MonoBehaviour
     public void ShowParrySuccess(float staminaGained, float counterDamage)
     {
         string message = $"¡Bloqueo! +{staminaGained:F0} stamina. ¡Contrataque de {counterDamage:F0} daño!";
+        Debug.Log($"<color=lime>[BattleNotificationSystem]</color> 🛡️ Showing PARRY SUCCESS notification: '{message}'");
         ShowNotification(message, successColor);
     }
     
@@ -82,6 +83,7 @@ public class BattleNotificationSystem : MonoBehaviour
     public void ShowPerfectParry(float staminaGained, float counterDamage)
     {
         string message = $"¡¡BLOQUEO PERFECTO!! +{staminaGained:F0} stamina. ¡Contrataque de {counterDamage:F0} daño!";
+        Debug.Log($"<color=yellow>[BattleNotificationSystem]</color> ⭐ Showing PERFECT PARRY notification: '{message}'");
         ShowNotification(message, perfectColor);
     }
     
@@ -138,19 +140,35 @@ public class BattleNotificationSystem : MonoBehaviour
     /// </summary>
     private void ShowNotification(string message, Color color)
     {
+        Debug.Log($"<color=cyan>[BattleNotificationSystem]</color> 📢 ShowNotification() called with message: '{message}'");
+        
         if (notificationText == null)
         {
-            Debug.LogWarning("Cannot show notification: notificationText is null");
+            Debug.LogWarning("<color=red>[BattleNotificationSystem]</color> ❌ Cannot show notification: notificationText is null!");
             return;
+        }
+        
+        if (notificationContainer != null)
+        {
+            Debug.Log($"<color=cyan>[BattleNotificationSystem]</color> Container: {notificationContainer.name}, Active: {notificationContainer.activeSelf}");
+            
+            // FORCE ENABLE: Make sure notification container stays active even during enemy turns
+            // This ensures parry notifications are visible during enemy attack animations
+            if (!notificationContainer.activeSelf)
+            {
+                Debug.Log($"<color=yellow>[BattleNotificationSystem]</color> ⚠️ Notification container was disabled, force-enabling it!");
+            }
         }
         
         // Cancel any existing notification
         if (currentNotificationCoroutine != null)
         {
+            Debug.Log("<color=yellow>[BattleNotificationSystem]</color> ⚠️ Stopping previous notification to show new one");
             StopCoroutine(currentNotificationCoroutine);
         }
         
         // Start new notification coroutine
+        Debug.Log($"<color=lime>[BattleNotificationSystem]</color> ✅ Starting notification sequence with duration {notificationDuration}s");
         currentNotificationCoroutine = StartCoroutine(NotificationSequence(message, color));
     }
     
@@ -166,7 +184,21 @@ public class BattleNotificationSystem : MonoBehaviour
         // If using container, just show/hide it
         if (notificationContainer != null)
         {
+            // IMPORTANT: Enable the container AND ensure it's visible
+            // This is needed because notifications should be visible even during enemy turns
             notificationContainer.SetActive(true);
+            
+            // Double-check it's actually enabled (parent might be disabled)
+            if (!notificationContainer.activeInHierarchy)
+            {
+                Debug.LogWarning($"<color=yellow>[BattleNotificationSystem]</color> ⚠️ Notification container '{notificationContainer.name}' is not showing! " +
+                    $"Check if parent GameObject is disabled. Notification: '{message}'");
+                Debug.LogWarning($"<color=yellow>[BattleNotificationSystem]</color> 💡 TIP: Make sure the Notification Container is NOT a child of actionSelectionUI or any UI that gets hidden during enemy turns!");
+            }
+            else
+            {
+                Debug.Log($"<color=lime>[BattleNotificationSystem]</color> ✅ Notification container is visible and showing message!");
+            }
             
             // Hold
             yield return new WaitForSeconds(notificationDuration);

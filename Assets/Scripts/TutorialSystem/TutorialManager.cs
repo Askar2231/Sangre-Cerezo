@@ -36,6 +36,22 @@ public class TutorialManager : MonoBehaviour
     [SerializeField] private bool tutorialsEnabled = true;
     [SerializeField] private bool debugMode = false;
 
+    [Header("⚠️ TESTING ONLY - Remove for Production ⚠️")]
+    [Tooltip("WARNING: Resets ALL tutorials every time the game loads. ONLY use for testing!")]
+    [SerializeField] private bool resetTutorialsOnLoad = true;
+
+    [Header("Debug Hotkeys (Testing)")]
+    [Tooltip("Modifier key 1 for debug hotkeys (default: LeftControl)")]
+    [SerializeField] private KeyCode modifier1 = KeyCode.LeftControl;
+    [Tooltip("Modifier key 2 for debug hotkeys (default: LeftShift)")]
+    [SerializeField] private KeyCode modifier2 = KeyCode.LeftShift;
+    [Tooltip("Reset all tutorials (default: R)")]
+    [SerializeField] private KeyCode resetTutorialsKey = KeyCode.R;
+    [Tooltip("Toggle tutorials on/off (default: T)")]
+    [SerializeField] private KeyCode toggleTutorialsKey = KeyCode.T;
+    [Tooltip("Debug log tutorial status (default: D)")]
+    [SerializeField] private KeyCode debugStatusKey = KeyCode.D;
+
     // Estado interno
     private Dictionary<string, bool> completedTutorials = new Dictionary<string, bool>();
     private Queue<TutorialData> tutorialQueue = new Queue<TutorialData>();
@@ -60,6 +76,20 @@ public class TutorialManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         LoadCompletedTutorials();
+
+        // ⚠️ TESTING ONLY: Auto-reset tutorials on load
+        if (resetTutorialsOnLoad)
+        {
+            Debug.LogWarning("╔════════════════════════════════════════════════════════════╗");
+            Debug.LogWarning("║  ⚠️  WARNING: TUTORIALS AUTO-RESET ON LOAD ENABLED  ⚠️   ║");
+            Debug.LogWarning("║  This is for TESTING ONLY!                                ║");
+            Debug.LogWarning("║  All tutorials will reset every time the game loads.      ║");
+            Debug.LogWarning("║  DISABLE 'resetTutorialsOnLoad' before production build!  ║");
+            Debug.LogWarning("╚════════════════════════════════════════════════════════════╝");
+            
+            ResetAllTutorials();
+            Debug.Log("<color=yellow>🔄 [TutorialManager] Tutorials automatically reset on load (Testing Mode)</color>");
+        }
     }
 
     private void Start()
@@ -81,6 +111,32 @@ public class TutorialManager : MonoBehaviour
         if (!isTutorialActive && tutorialQueue.Count > 0)
         {
             ProcessNextTutorial();
+        }
+
+        // Debug hotkeys (configurable in Inspector)
+        bool modifiersPressed = Input.GetKey(modifier1) && Input.GetKey(modifier2);
+
+        if (modifiersPressed)
+        {
+            // Reset all tutorials
+            if (Input.GetKeyDown(resetTutorialsKey))
+            {
+                ResetAllTutorials();
+                Debug.Log($"<color=yellow>🔄 [TutorialManager] ALL TUTORIALS RESET! ({modifier1}+{modifier2}+{resetTutorialsKey} pressed)</color>");
+            }
+
+            // Toggle tutorials on/off
+            if (Input.GetKeyDown(toggleTutorialsKey))
+            {
+                SetTutorialsEnabled(!tutorialsEnabled);
+                Debug.Log($"<color=cyan>🎓 [TutorialManager] Tutorials {(tutorialsEnabled ? "ENABLED" : "DISABLED")} ({modifier1}+{modifier2}+{toggleTutorialsKey} pressed)</color>");
+            }
+
+            // Debug log tutorial status
+            if (Input.GetKeyDown(debugStatusKey))
+            {
+                DebugLogTutorialStatus();
+            }
         }
     }
     #endregion

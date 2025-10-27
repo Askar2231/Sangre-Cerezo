@@ -27,6 +27,8 @@ public class BattleManagerV2 : MonoBehaviour
     [Header("UI")]
     [SerializeField] private BattleUIButtonController uiButtonController;
     [SerializeField] private GameObject actionSelectionUI; // Optional legacy UI
+    [SerializeField] private GameObject generalUICanvas; // UI shown outside of combat (Karma, etc.)
+    [SerializeField] private GameObject battleUICanvas; // UI shown during combat (optional, if you have a separate battle canvas)
 
     [Header("Camera")]
     [SerializeField] private ThirdPersonJRPGCamera battleCamera;
@@ -64,16 +66,12 @@ public class BattleManagerV2 : MonoBehaviour
     public bool IsBattleActive => battleResult == BattleResult.None;
 
     [Header("Parry System")]
-    [SerializeField] private GameObject parryIndicatorPrefab;
-    [SerializeField] private float parryIndicatorHeight = 1.5f;
-    [SerializeField] private float parryIndicatorScale = 0.8f;
+    [SerializeField] private ParryIcon parryIconSpawner; // Reference to the ParryIconSpawner object
     
     [Header("Parry Rewards")]
     [SerializeField] private float counterAttackDamage = 25f;
     [SerializeField] private float parryStaminaReward = 30f;
     [SerializeField] private string counterAttackAnimationState = "CounterAttack";
-    
-    private GameObject activeParryIndicator;
 
     [Header("UI Health Display")]
     [SerializeField] private TextMeshProUGUI playerHealthText;
@@ -133,6 +131,9 @@ public class BattleManagerV2 : MonoBehaviour
             parrySystem.OnParrySuccessWithTiming += HandleParrySuccessWithTiming;
             parrySystem.OnParryFail += HandleParryFail;
             Debug.Log("<color=lime>[BattleManager]</color> ✅ ParrySystem event subscriptions complete");
+            
+            // VERIFY subscription worked
+            Debug.Log($"<color=cyan>[BattleManager]</color> 🔍 Subscription verified - HandleParrySuccess is now listening for OnParrySuccess events");
         }
         else
         {
@@ -191,6 +192,10 @@ public class BattleManagerV2 : MonoBehaviour
             Debug.LogError("EnemyBattleController is null! Cannot start battle.");
             return;
         }
+
+        // Hide general UI and show battle UI
+        SetGeneralUIVisible(false);
+        SetBattleUIVisible(true);
 
         // Disable player movement during battle
         DisablePlayerMovement();
@@ -352,6 +357,17 @@ public class BattleManagerV2 : MonoBehaviour
         enemyController.OnAttackComplete += HandleEnemyAttackComplete;
         enemyController.Character.OnDeath += HandleEnemyDeath;
         enemyController.Character.OnDamageTaken += HandleEnemyDamageTaken;
+        
+        // ParrySystem events (CRITICAL: Re-subscribe after UnsubscribeFromEvents)
+        if (parrySystem != null)
+        {
+            Debug.Log("<color=lime>[BattleManager]</color> 🔄 Re-subscribing to ParrySystem events in SubscribeToEvents()");
+            parrySystem.OnParryWindowActive += HandleParryWindowStateChanged;
+            parrySystem.OnParrySuccess += HandleParrySuccess;
+            parrySystem.OnParrySuccessWithTiming += HandleParrySuccessWithTiming;
+            parrySystem.OnParryFail += HandleParryFail;
+            Debug.Log("<color=lime>[BattleManager]</color> ✅ ParrySystem re-subscribed successfully!");
+        }
     }
 
     #region State Change Handlers
@@ -801,6 +817,10 @@ public class BattleManagerV2 : MonoBehaviour
         // INVOCAR EVENTO ANTES DE LIMPIAR
         OnBattleEnded?.Invoke(battleResult);
         
+        // Show general UI and hide battle UI
+        SetGeneralUIVisible(true);
+        SetBattleUIVisible(false);
+        
         // Return player to original position if we moved them
         if (combatPositionSetup != null)
         {
@@ -961,6 +981,36 @@ public class BattleManagerV2 : MonoBehaviour
         UpdateEnemyHealthUI();
         UpdatePlayerStaminaUI(); // AGREGAR ESTA LÍNEA
     }
+    
+    /// <summary>
+    /// Show or hide the general UI (shown outside of combat)
+    /// </summary>
+    private void SetGeneralUIVisible(bool visible)
+    {
+        if (generalUICanvas != null)
+        {
+            generalUICanvas.SetActive(visible);
+            Debug.Log($"<color=cyan>[BattleManager]</color> General UI set to: {(visible ? "VISIBLE" : "HIDDEN")}");
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>[BattleManager]</color> GeneralUICanvas reference is not assigned!");
+        }
+    }
+    
+    /// <summary>
+    /// Show or hide the battle UI (shown during combat)
+    /// </summary>
+    private void SetBattleUIVisible(bool visible)
+    {
+        if (battleUICanvas != null)
+        {
+            battleUICanvas.SetActive(visible);
+            Debug.Log($"<color=cyan>[BattleManager]</color> Battle UI set to: {(visible ? "VISIBLE" : "HIDDEN")}");
+        }
+        // Note: If you don't have a separate battle UI canvas, you can leave this empty
+        // The action selection UI is already handled separately
+    }
 
     #endregion
 
@@ -1051,7 +1101,7 @@ public class BattleManagerV2 : MonoBehaviour
     #region Combat Positioning
     
     /// <summary>
-    /// Transition with camera fade - instant positioning during black screen
+    /// P with camera fade - instant positioning during black screen
     /// </summary>
     private IEnumerator TransitionWithFade()
     {
@@ -1330,6 +1380,10 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParrySuccess()
     {
+        Debug.Log("==========================================================");
+        Debug.Log("🎉🎉🎉 HANDLEPARRYSUCCESS CALLED! 🎉🎉🎉");
+        Debug.Log("==========================================================");
+        
         DestroyParryIndicator();
         Debug.Log("Parry successful! Executing counter-attack!");
 
@@ -1347,13 +1401,17 @@ public class BattleManagerV2 : MonoBehaviour
         }
 
         // Ejecutar contrataque automático del jugador
+        Debug.Log($"<color=yellow>[BattleManager]</color> 🚀 Starting ExecuteCounterAttack coroutine...");
         StartCoroutine(ExecuteCounterAttack());
     }
 
     private IEnumerator ExecuteCounterAttack()
     {
-        // Pequeño delay para la animación de parry
-        yield return new WaitForSeconds(0.2f);
+        // IMPORTANT: Wait for parry animation to play before counter-attack
+        // Parry animation needs to be visible for player feedback
+        // Default: 0.5s (adjust based on your parry animation length)
+        Debug.Log($"<color=cyan>[BattleManager]</color> ⏱️ Waiting for parry animation to complete...");
+        yield return new WaitForSeconds(0.5f);
 
         Debug.Log($"<color=yellow>Counter-attack hitting enemy for {counterAttackDamage} damage!</color>");
 
@@ -1403,30 +1461,46 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParrySuccessWithTiming(bool wasPerfect)
     {
+        Debug.Log($"<color=cyan>[BattleManager]</color> 🛡️ HandleParrySuccessWithTiming({wasPerfect}) called!");
+        Debug.Log($"<color=yellow>⚔️ {(wasPerfect ? "PERFECT PARRY!" : "PARRY SUCCESS!")} ⚔️</color>");
+        
         // Show notification based on perfect timing
         if (notificationSystem != null)
         {
+            Debug.Log($"<color=cyan>[BattleManager]</color> 📢 Displaying parry notification...");
             if (wasPerfect)
             {
                 notificationSystem.ShowPerfectParry(parryStaminaReward, counterAttackDamage);
+                Debug.Log($"<color=yellow>[BattleManager]</color> ⭐ PERFECT PARRY notification shown! (+{parryStaminaReward} stamina, {counterAttackDamage} counter dmg)");
             }
             else
             {
                 notificationSystem.ShowParrySuccess(parryStaminaReward, counterAttackDamage);
+                Debug.Log($"<color=lime>[BattleManager]</color> ✅ PARRY SUCCESS notification shown! (+{parryStaminaReward} stamina, {counterAttackDamage} counter dmg)");
             }
+        }
+        else
+        {
+            Debug.LogWarning("<color=red>[BattleManager]</color> ⚠️ BattleNotificationSystem is NULL! Cannot show parry notification!");
         }
         
         // Delegate to PlayerBattleController to play parry animation
+        Debug.Log($"<color=cyan>[BattleManager]</color> 🎬 Triggering player parry animation...");
         if (playerController != null)
         {
             playerController.PlayParryAnimation(wasPerfect);
+            Debug.Log($"<color=lime>[BattleManager]</color> ✅ Player parry animation triggered via PlayerBattleController!");
+        }
+        else
+        {
+            Debug.LogError("<color=red>[BattleManager]</color> ❌ PlayerController is NULL! Cannot play parry animation!");
         }
 
         // Play enemy stagger animation
         if (enemyController?.Character?.Animator != null)
         {
             enemyController.Character.Animator.Play("Staggered");
-            Debug.Log("Playing enemy stagger animation");
+            Debug.Log("<color=lime>[BattleManager]</color> 🎭 Playing enemy stagger animation");
         }
     }
 
@@ -1445,27 +1519,14 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void CreateParryIndicator()
     {
-        if (parryIndicatorPrefab == null || enemyController == null || enemyController.gameObject == null)
-            return;
-
-        if (activeParryIndicator != null)
+        if (parryIconSpawner == null)
         {
-            Destroy(activeParryIndicator);
+            Debug.LogWarning("<color=yellow>[BattleManager]</color> ParryIconSpawner not assigned! Parry indicator will not show.");
+            return;
         }
 
-        Debug.Log("Parry window opened! Creating indicator");
-
-        // Usar la altura configurable desde el Inspector
-        Vector3 spawnPos = enemyController.transform.position + Vector3.up * parryIndicatorHeight;
-        Quaternion rot = parryIndicatorPrefab.transform.rotation * Quaternion.Euler(0, 180, 0);
-
-        activeParryIndicator = Instantiate(parryIndicatorPrefab, spawnPos, rot, enemyController.transform);
-
-        // Usar la escala configurable desde el Inspector
-        activeParryIndicator.transform.localScale = Vector3.one * parryIndicatorScale;
-
-        // Usar la altura configurable para el FollowTarget también
-        activeParryIndicator.AddComponent<FollowTarget>().Init(enemyController.transform, Vector3.up * parryIndicatorHeight);
+        Debug.Log("<color=cyan>[BattleManager]</color> Parry window opened! Showing parry indicator");
+        parryIconSpawner.Show();
     }
 
     /// <summary>
@@ -1473,11 +1534,10 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void DestroyParryIndicator()
     {
-        if (activeParryIndicator != null)
+        if (parryIconSpawner != null)
         {
-            Destroy(activeParryIndicator);
-            activeParryIndicator = null;
-            Debug.Log("Parry indicator destroyed");
+            parryIconSpawner.Hide();
+            Debug.Log("<color=cyan>[BattleManager]</color> Parry indicator hidden");
         }
     }
 
@@ -1508,8 +1568,8 @@ public class BattleManagerV2 : MonoBehaviour
         if (playerMovement == null)
             Debug.LogWarning("PlayerMovement (MovimientoV2) not assigned! Movement will not be disabled during battle.");
 
-        if (parryIndicatorPrefab == null)
-            Debug.LogWarning("ParryIndicatorPrefab not assigned! Parry indicators will not show.");
+        if (parryIconSpawner == null)
+            Debug.LogWarning("ParryIconSpawner not assigned! Parry indicators will not show.");
     }
 
     #endregion

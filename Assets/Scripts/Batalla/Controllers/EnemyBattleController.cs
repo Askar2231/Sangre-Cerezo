@@ -107,13 +107,21 @@ public class EnemyBattleController : MonoBehaviour
         {
             parrySystem.OpenParryWindow();
             Debug.Log("Parry window opened!");
+            
+            // Wait for the FULL parry window duration (not a fixed damage time!)
+            float parryWindowDuration = parrySystem.ParryWindowDuration; // ✅ Use public property (capital P)
+            Debug.Log($"<color=cyan>[EnemyBattleController]</color> Waiting for parry window to close... Duration: {parryWindowDuration}s");
+            yield return new WaitForSeconds(parryWindowDuration);
+            Debug.Log($"<color=lime>[EnemyBattleController]</color> Parry window should be closed now, applying damage...");
         }
-
-        // Wait until damage application time
-        float remainingTime = damageApplicationTime - parryWindowStartTime;
-        if (remainingTime > 0)
+        else
         {
-            yield return new WaitForSeconds(remainingTime);
+            // Fallback if no parry system
+            float remainingTime = damageApplicationTime - parryWindowStartTime;
+            if (remainingTime > 0)
+            {
+                yield return new WaitForSeconds(remainingTime);
+            }
         }
 
         // Apply damage if not parried

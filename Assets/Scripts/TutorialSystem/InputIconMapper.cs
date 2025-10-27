@@ -246,15 +246,22 @@ public class InputIconMapper : MonoBehaviour
             {
                 action = InputAction.Move,
                 keyboardSpriteName = "WASD",
-                xboxSpriteName = "Xbox_LS",
-                playStationSpriteName = "PS_LS"
+                xboxSpriteName = "Joy_LS",
+                playStationSpriteName = "Joy_LS"
+            },
+            new InputActionSpriteMap
+            {
+                action = InputAction.MoveCamera,
+                keyboardSpriteName = "Mouse",
+                xboxSpriteName = "Joy_RS",
+                playStationSpriteName = "Joy_RS"
             },
             new InputActionSpriteMap
             {
                 action = InputAction.Run,
                 keyboardSpriteName = "Key_Shift",
-                xboxSpriteName = "Xbox_R3",
-                playStationSpriteName = "PS_R3"
+                xboxSpriteName = "Joy_L3",
+                playStationSpriteName = "Joy_L3"
             },
             new InputActionSpriteMap
             {
@@ -309,29 +316,29 @@ public class InputIconMapper : MonoBehaviour
             {
                 action = InputAction.Skill1,
                 keyboardSpriteName = "Key_Q",
-                xboxSpriteName = "Xbox_LT",
+                xboxSpriteName = "Xbox_LB",
                 playStationSpriteName = "PS_L1"
             },
             new InputActionSpriteMap
             {
                 action = InputAction.Skill2,
                 keyboardSpriteName = "Key_R",
-                xboxSpriteName = "Xbox_RT",
+                xboxSpriteName = "Xbox_RB",
                 playStationSpriteName = "PS_R1"
             },
             new InputActionSpriteMap
             {
                 action = InputAction.EndTurn,
                 keyboardSpriteName = "Key_Tab",
-                xboxSpriteName = "Xbox_RB",
+                xboxSpriteName = "Xbox_RT",
                 playStationSpriteName = "PS_R2"
             },
             new InputActionSpriteMap
             {
                 action = InputAction.Choice1,
                 keyboardSpriteName = "Key_Q",
-                xboxSpriteName = "Xbox_Y",
-                playStationSpriteName = "PS_Triangle"
+                xboxSpriteName = "Xbox_X",
+                playStationSpriteName = "PS_Cross"
             },
             new InputActionSpriteMap
             {
@@ -390,6 +397,7 @@ public class InputIconMapper : MonoBehaviour
         switch (action)
         {
             case InputAction.Move: return "WASD";
+            case InputAction.MoveCamera: return "Mouse";
             case InputAction.Run: return "Shift";
             case InputAction.Interact: return "E";
             case InputAction.QTE: return "Espacio";
@@ -412,6 +420,7 @@ public class InputIconMapper : MonoBehaviour
         switch (action)
         {
             case InputAction.Move: return "Stick Izq.";
+            case InputAction.MoveCamera: return "Stick Der.";
             case InputAction.Run: return "LT";
             case InputAction.Interact: return "A";
             case InputAction.QTE: return "A";
@@ -434,6 +443,7 @@ public class InputIconMapper : MonoBehaviour
         switch (action)
         {
             case InputAction.Move: return "Stick Izq.";
+            case InputAction.MoveCamera: return "Stick Der.";
             case InputAction.Run: return "L2";
             case InputAction.Interact: return "Cruz";
             case InputAction.QTE: return "Cruz";
@@ -480,6 +490,7 @@ public class InputIconMapper : MonoBehaviour
 
         // Reemplazar cada placeholder con sprite tag o texto
         processedText = processedText.Replace("{Move}", GetSpriteOrText(InputAction.Move, colorToUse));
+        processedText = processedText.Replace("{MoveCamera}", GetSpriteOrText(InputAction.MoveCamera, colorToUse));
         processedText = processedText.Replace("{Run}", GetSpriteOrText(InputAction.Run, colorToUse));
         processedText = processedText.Replace("{Interact}", GetSpriteOrText(InputAction.Interact, colorToUse));
         processedText = processedText.Replace("{QTE}", GetSpriteOrText(InputAction.QTE, colorToUse));

@@ -24,7 +24,7 @@ public class PlayerBattleController : MonoBehaviour
     private AnimationSequencer animationSequencer;
     private QTEManager qteManager;
     private BattleNotificationSystem notificationSystem;
-    
+
     // Current action being executed
     private BattleAction currentAction;
 
@@ -73,7 +73,7 @@ public class PlayerBattleController : MonoBehaviour
         if (animationSequencer != null && qteManager != null && lightAttackData != null)
         {
             Debug.Log("Executing attack through AttackAction system");
-            
+
             // Create attack action
             currentAction = new AttackAction(
                 playerCharacter,
@@ -83,10 +83,10 @@ public class PlayerBattleController : MonoBehaviour
                 qteManager,
                 notificationSystem
             );
-            
+
             // Subscribe to completion
             currentAction.OnActionComplete += HandleActionComplete;
-            
+
             // Execute the action
             currentAction.Execute();
         }
@@ -123,7 +123,7 @@ public class PlayerBattleController : MonoBehaviour
         if (animationSequencer != null && qteManager != null && heavyAttackData != null)
         {
             Debug.Log("Executing heavy attack through AttackAction system");
-            
+
             // Create attack action
             currentAction = new AttackAction(
                 playerCharacter,
@@ -133,10 +133,10 @@ public class PlayerBattleController : MonoBehaviour
                 qteManager,
                 notificationSystem
             );
-            
+
             // Subscribe to completion
             currentAction.OnActionComplete += HandleActionComplete;
-            
+
             // Execute the action
             currentAction.Execute();
         }
@@ -180,7 +180,7 @@ public class PlayerBattleController : MonoBehaviour
         if (playerCharacter?.Animator != null && skill != null)
         {
             Debug.Log($"Executing skill through SkillAction system: {skill.skillName}");
-            
+
             // Create skill action
             currentAction = new SkillAction(
                 playerCharacter,
@@ -189,10 +189,10 @@ public class PlayerBattleController : MonoBehaviour
                 playerCharacter.Animator,
                 notificationSystem
             );
-            
+
             // Subscribe to completion
             currentAction.OnActionComplete += HandleActionComplete;
-            
+
             // Execute the action
             currentAction.Execute();
         }
@@ -233,16 +233,16 @@ public class PlayerBattleController : MonoBehaviour
             currentAction.OnActionComplete -= HandleActionComplete;
             currentAction = null;
         }
-        
+
         // Notify battle manager
         OnActionComplete?.Invoke();
-        
+
         // Haptic feedback
         if (GamepadVibrationManager.Instance != null)
         {
             GamepadVibrationManager.Instance.VibrateOnLightAttack();
         }
-        
+
         Debug.Log("Player action completed");
     }
 
@@ -252,7 +252,7 @@ public class PlayerBattleController : MonoBehaviour
     private void ExecuteAttackDamageFallback(BattleCharacter target, bool isHeavy = false)
     {
         AttackAnimationData attackData = isHeavy ? heavyAttackData : lightAttackData;
-        
+
         if (attackData == null)
         {
             Debug.LogError($"{(isHeavy ? "Heavy" : "Light")} attack data is null!");
@@ -308,6 +308,10 @@ public class PlayerBattleController : MonoBehaviour
                 return lightAttackData != null &&
                        playerCharacter.StaminaManager.HasEnoughStamina(lightAttackData.staminaCost);
 
+            case ActionType.HeavyAttack:
+                return heavyAttackData != null &&
+                       playerCharacter.StaminaManager.HasEnoughStamina(heavyAttackData.staminaCost);
+
             case ActionType.Skill:
                 // Check if any skill is available
                 foreach (var skill in availableSkills)
@@ -332,9 +336,35 @@ public class PlayerBattleController : MonoBehaviour
             case ActionType.LightAttack:
                 return lightAttackData != null ? lightAttackData.staminaCost : 0f;
 
+            case ActionType.HeavyAttack:
+                return heavyAttackData != null ? heavyAttackData.staminaCost : 0f;
+
             case ActionType.Skill:
                 if (skillIndex >= 0 && skillIndex < availableSkills.Length && availableSkills[skillIndex] != null)
-                    return availableSkills[skillIndex].staminaCost; // Ya está correcto
+                    return availableSkills[skillIndex].staminaCost;
+                return 0f;
+
+            default:
+                return 0f;
+        }
+    }
+
+    /// <summary>
+    /// Get base damage for an action
+    /// </summary>
+    public float GetActionDamage(ActionType actionType, int skillIndex = 0)
+    {
+        switch (actionType)
+        {
+            case ActionType.LightAttack:
+                return lightAttackData != null ? lightAttackData.baseDamage : 0f;
+
+            case ActionType.HeavyAttack:
+                return heavyAttackData != null ? heavyAttackData.baseDamage : 0f;
+
+            case ActionType.Skill:
+                if (skillIndex >= 0 && skillIndex < availableSkills.Length && availableSkills[skillIndex] != null)
+                    return availableSkills[skillIndex].damageAmount;
                 return 0f;
 
             default:
@@ -369,19 +399,79 @@ public class PlayerBattleController : MonoBehaviour
 
     /// <summary>
     /// Play parry animation based on timing quality
+    /// 
+    /// ANIMATOR CONTROLLER SETUP (same as Light/Heavy Attack):
+    /// 1. Create states "Parry" and "ParryPerfect" in Animator Controller
+    /// 2. Assign animation clips to these states
+    /// 3. NO transitions FROM Idle TO Parry (we use Animator.Play() to force state)
+    /// 4. Only add transitions FROM Parry/ParryPerfect BACK TO Idle
+    /// 5. Set "Has Exit Time" on the return transition to match animation length
+    /// 
+    /// This matches the pattern used for attack animations (see AnimationSequencer.cs line 66)
     /// </summary>
+    [ContextMenu("TEST: Play Normal Parry Animation")]
+    public void TestPlayNormalParry()
+    {
+        PlayParryAnimation(false);
+    }
+
+    [ContextMenu("TEST: Play Perfect Parry Animation")]
+    public void TestPlayPerfectParry()
+    {
+        PlayParryAnimation(true);
+    }
+
     public void PlayParryAnimation(bool wasPerfect)
     {
+        Debug.Log($"<color=cyan>[PlayerBattleController]</color> 🛡️ PlayParryAnimation() called! wasPerfect={wasPerfect}");
+        Debug.Log($"<color=magenta>[PlayerBattleController]</color> 🔧 THIS IS THE MODIFIED PlayerBattleController.cs!");
+        Debug.Log($"<color=magenta>[PlayerBattleController]</color> 🔧 parryAnimationName='{parryAnimationName}', perfectParryAnimationName='{perfectParryAnimationName}'");
+        
         if (playerCharacter?.Animator == null)
         {
-            Debug.LogWarning("Player animator is null, cannot play parry animation");
+            Debug.LogWarning("<color=red>[PlayerBattleController]</color> ❌ Player animator is null, cannot play parry animation!");
+            Debug.LogWarning($"playerCharacter is {(playerCharacter == null ? "NULL" : "NOT NULL")}");
+            if (playerCharacter != null)
+            {
+                Debug.LogWarning($"playerCharacter.Animator is {(playerCharacter.Animator == null ? "NULL" : "NOT NULL")}");
+                Debug.LogWarning($"<color=red>🔍 SOLUTION: Make sure your Player GameObject has a BattleCharacter component with an Animator reference assigned!</color>");
+            }
             return;
         }
 
         string animationToPlay = wasPerfect ? perfectParryAnimationName : parryAnimationName;
-        playerCharacter.Animator.Play(animationToPlay);
-
-        Debug.Log($"Playing player parry animation: {animationToPlay}");
+        
+        Debug.Log($"<color=lime>[PlayerBattleController]</color> ✅ Playing player parry animation: '{animationToPlay}'");
+        Debug.Log($"<color=yellow>🎬 Animator.Play(\"{animationToPlay}\", 0, 0f) - Layer 0, start from beginning!</color>");
+        
+        // Verify the animation state exists
+        var animatorController = playerCharacter.Animator.runtimeAnimatorController;
+        if (animatorController != null)
+        {
+            Debug.Log($"<color=cyan>🎭 Animator Controller: {animatorController.name}</color>");
+            Debug.Log($"<color=cyan>🔍 Make sure '{animationToPlay}' state exists in the Animator Controller!</color>");
+            
+            // Check current animator state
+            var currentState = playerCharacter.Animator.GetCurrentAnimatorStateInfo(0);
+            Debug.Log($"<color=yellow>📊 Current Animator State: {currentState.fullPathHash} (normalized time: {currentState.normalizedTime})</color>");
+        }
+        else
+        {
+            Debug.LogWarning($"<color=red>❌ No AnimatorController assigned to the Animator!</color>");
+        }
+        
+        // Force play the animation on layer 0, starting from time 0
+        // This immediately transitions to the parry animation regardless of current state
+        // Same pattern as AnimationSequencer.cs for attack animations
+        playerCharacter.Animator.Play(animationToPlay, 0, 0f);
+        
+        Debug.Log($"<color=lime>[PlayerBattleController]</color> 🎭 Parry animation '{animationToPlay}' triggered successfully!");
+        Debug.Log($"<color=cyan>💡 ANIMATOR SETUP (same as attack animations):</color>");
+        Debug.Log($"<color=cyan>  1. State '{animationToPlay}' must exist in Animator Controller</color>");
+        Debug.Log($"<color=cyan>  2. State has animation clip assigned</color>");
+        Debug.Log($"<color=cyan>  3. NO transition FROM Idle TO {animationToPlay} (we use .Play() to force it)</color>");
+        Debug.Log($"<color=cyan>  4. Only transition FROM {animationToPlay} BACK TO Idle (with 'Has Exit Time')</color>");
+        Debug.Log($"<color=cyan>  5. This matches Light Attack / Heavy Attack setup pattern</color>");
     }
 
     /// <summary>
