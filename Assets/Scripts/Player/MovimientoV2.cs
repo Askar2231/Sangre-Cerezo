@@ -26,9 +26,14 @@ public class MovimientoV2 : MonoBehaviour
     [Header("Input (Unity Input System)")]
     [SerializeField] private InputActionReference moveAction;
     [SerializeField] private InputActionReference runAction;
-    
 
- 
+    [Header("Audio Settings")]
+    [SerializeField] public AudioSource pasos;
+    [SerializeField] private float walkspeedmusic = 1f;
+    [SerializeField] private float runspeedmusic = 1.4f;
+
+    
+    
 
     // Components
     private Animator animator;
@@ -77,6 +82,10 @@ public class MovimientoV2 : MonoBehaviour
         UpdateAnimation();
         HandleMovement();
         HandleRotation();
+        HandleAudio();
+        
+        
+
 
         
     }
@@ -97,7 +106,7 @@ public class MovimientoV2 : MonoBehaviour
     // Read movement input
     if (moveAction != null && moveAction.action != null)
     {
-        currentInput = moveAction.action.ReadValue<Vector2>();
+        currentInput = moveAction.action.ReadValue<Vector2>();  
     }
     else
     {
@@ -288,13 +297,39 @@ public class MovimientoV2 : MonoBehaviour
         {
             animator.SetFloat(SpeedHash, 0f);
         }
+
+        #endregion
     }
 
-    #endregion
+    //Sonido de pasos cuando el personaje se mueve
+
+    private void HandleAudio()
+    {
+        if (pasos == null)
+            return;
+
+        bool estaMoviendose = canMove && currentInput.magnitude > 0.1f;
+
+        if (estaMoviendose)
+        {
+            // Ajusta el pitch (tono) según si está corriendo o caminando
+            pasos.pitch = isRunning ? runspeedmusic : walkspeedmusic;
+
+            // Si el sonido no está sonando, lo reproduce
+            if (!pasos.isPlaying)
+            {
+                pasos.Play();
+            }
+        }
+        else
+        {
+            // Detiene el sonido al quedarse quieto
+            if (pasos.isPlaying)
+            {
+                pasos.Stop();
+            }
+        }
+    }
     
 
 }
-
-
-
-
