@@ -1386,6 +1386,10 @@ public class BattleManagerV2 : MonoBehaviour
         
         DestroyParryIndicator();
         Debug.Log("Parry successful! Executing counter-attack!");
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnParry();
+        }
 
         // Award stamina immediately
         if (playerController != null && playerController.Character != null)
@@ -1509,9 +1513,17 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParryFail()
     {
+<<<<<<< Updated upstream
         Debug.Log("Parry failed! Player will take damage.");
         // Note: Damage notification will be shown when damage is actually applied
         // via EnemyBattleController's damage application
+=======
+        Debug.Log("Parry failed!");
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnTakeDamage(0.3f);
+        }
+>>>>>>> Stashed changes
     }
 
     /// <summary>
