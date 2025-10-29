@@ -1,7 +1,16 @@
 using UnityEngine;
 using System; 
 
-public enum RobberyQuestState { NotStarted, DialogueIntro, CombatActive, PostCombatDecision, ReturnToMerchant, Completed }
+public enum RobberyQuestState
+{
+    NotStarted,
+    DialogueIntro,
+    CombatActive,
+    PostCombatDecision,
+    ReturnToMerchant,
+    Completed,
+    TalkToFirstNPC 
+}
 
 public class QuestManager : MonoBehaviour
 {
@@ -328,4 +337,13 @@ public class QuestManager : MonoBehaviour
     {
         return currentQuestState;
     }
+
+    // En QuestManager, agrega métodos para activar esta misión:
+    public void StartTalkToFirstNPCQuest()
+    {
+        UpdateQuestState(RobberyQuestState.TalkToFirstNPC);
+    }
+
+    // Y en UpdateObjectiveFromRobberyQuest, agrega el texto:
+    
 }
