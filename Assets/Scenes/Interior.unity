@@ -10449,7 +10449,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 8264220491600420490}
-  offset: {x: 0, y: 18, z: -19}
+  offset: {x: 0, y: 18, z: -33}
   mouseXSens: 10
   mouseYSens: 120
   joystickXSens: 100
@@ -10458,8 +10458,8 @@ MonoBehaviour:
   maxPitch: 20
   autoFollowDelay: 1.023013e+11
   autoFollowSpeed: 5
-  followDistance: 2
-  followHeight: 1
+  followDistance: 11.27
+  followHeight: 4.12
   combatDistance: 1.5
   combatHeight: 0.8
   combatOffset: {x: 7, y: 18, z: -19}
