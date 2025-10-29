@@ -460,6 +460,7 @@ public class PlayerBattleController : MonoBehaviour
             Debug.LogWarning($"<color=red>❌ No AnimatorController assigned to the Animator!</color>");
         }
         
+<<<<<<< Updated upstream
         // Force play the animation on layer 0, starting from time 0
         // This immediately transitions to the parry animation regardless of current state
         // Same pattern as AnimationSequencer.cs for attack animations
@@ -510,6 +511,17 @@ public class PlayerBattleController : MonoBehaviour
         if (GamepadVibrationManager.Instance != null)
         {
             GamepadVibrationManager.Instance.VibrateOnHeavyAttack(); // Use heavy attack vibration for counter
+=======
+        // Aplicar daño del contrataque
+        float counterDamage = 30f; // Ajusta este valor
+        enemy.TakeDamage(counterDamage);
+
+        Debug.Log($"Counter-attack dealt {counterDamage} damage!");
+        
+         if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnCounterattack();
+>>>>>>> Stashed changes
         }
     }
 }
