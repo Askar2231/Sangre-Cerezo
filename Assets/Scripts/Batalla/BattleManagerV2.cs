@@ -1513,17 +1513,9 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private void HandleParryFail()
     {
-<<<<<<< Updated upstream
         Debug.Log("Parry failed! Player will take damage.");
         // Note: Damage notification will be shown when damage is actually applied
         // via EnemyBattleController's damage application
-=======
-        Debug.Log("Parry failed!");
-        if (GamepadVibrationManager.Instance != null)
-        {
-            GamepadVibrationManager.Instance.VibrateOnTakeDamage(0.3f);
-        }
->>>>>>> Stashed changes
     }
 
     /// <summary>
