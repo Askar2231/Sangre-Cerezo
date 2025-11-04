@@ -30357,6 +30357,71 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1750804475}
   m_Mesh: {fileID: -4191168838494703905, guid: bc14e1e838c0a8e478cec273f7c5a5a7, type: 3}
+--- !u!1 &1753887107
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1753887108}
+  - component: {fileID: 1753887109}
+  m_Layer: 0
+  m_Name: CameraEffectManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1753887108
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1753887107}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -16.5, y: 3.012298, z: -4.5233765}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1753887109
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1753887107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4bdbc87db161414993045c662983e67, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  parryShakeIntensity: 0.8
+  parryShakeDuration: 0.3
+  perfectParryShakeIntensity: 1.2
+  perfectParryShakeDuration: 0.4
+  playerHitShakeIntensity: 0.5
+  playerHitShakeDuration: 0.2
+  enemyHitShakeIntensity: 0.4
+  enemyHitShakeDuration: 0.15
+  qteSuccessShakeIntensity: 0.6
+  qteSuccessShakeDuration: 0.25
+  qteFailShakeIntensity: 0.3
+  qteFailShakeDuration: 0.2
+  lightAttackShakeIntensity: 0.3
+  lightAttackShakeDuration: 0.1
+  heavyAttackShakeIntensity: 0.7
+  heavyAttackShakeDuration: 0.3
+  enableSlowMotionOnPerfectParry: 1
+  slowMotionScale: 0.3
+  slowMotionDuration: 0.5
+  mainCamera: {fileID: 1535063829}
+  battleCamera: {fileID: 1535063831}
 --- !u!1 &1755442527
 GameObject:
   m_ObjectHideFlags: 0
@@ -39012,3 +39077,4 @@ SceneRoots:
   - {fileID: 186963663}
   - {fileID: 288715809}
   - {fileID: 2138688527}
+  - {fileID: 1753887108}
