@@ -779,9 +779,9 @@ public class BattleManagerV2 : MonoBehaviour
             playerController.Character.PlayVictoryAnimation();
         }
 
-        // NO destruir aquí, dejar que el BattleTrigger lo maneje
-        // StartCoroutine(DestroyEnemyAfterDelay(1.5f)); // COMENTAR ESTA LÍNEA
-
+        // NUEVO: NO destruir el enemigo automáticamente
+        // Dejar que el QuestManager maneje la destrucción después de la decisión del jugador
+        
         turnManager.ChangeBattleState(BattleState.BattleEnd);
     }
 
