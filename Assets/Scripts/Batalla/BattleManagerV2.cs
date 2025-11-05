@@ -601,6 +601,11 @@ public class BattleManagerV2 : MonoBehaviour
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
         playerController.ExecuteLightAttack(enemyController.Character);
+        // Vibración al atacar
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnLightAttack();
+        }
     }
     
     /// <summary>
@@ -633,6 +638,11 @@ public class BattleManagerV2 : MonoBehaviour
         
         turnManager.ChangePlayerTurnState(PlayerTurnState.ExecutingAttack);
         playerController.ExecuteHeavyAttack(enemyController.Character);
+        // Vibración al atacar pesado
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnHeavyAttack();
+        }
     }
     
     /// <summary>
@@ -1519,6 +1529,12 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandlePlayerDamageTaken(float damage)
     {
         Debug.Log($"Player took {damage} damage");
+        
+        // VIBRACIÓN cuando el jugador recibe daño
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnTakeDamage(damage / 100f); // Normalizar daño
+        }
         
         // Only show notification if it wasn't parried
         // (Parry notifications are shown via HandleParrySuccessWithTiming)

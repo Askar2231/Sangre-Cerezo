@@ -305,6 +305,10 @@ public class PlayerBattleController : MonoBehaviour
         {
             playerCharacter.Heal(skill.healAmount);
             Debug.Log($"Player heals for {skill.healAmount} HP");
+            if (GamepadVibrationManager.Instance != null)
+            {
+                GamepadVibrationManager.Instance.VibrateOnHeal();
+            }
         }
 
         Debug.Log($"Player uses {skill.skillName} dealing {damage} damage to {target.name}");
