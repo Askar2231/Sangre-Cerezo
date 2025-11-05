@@ -58,6 +58,7 @@ public class BossBattleController : MonoBehaviour
     private ParrySystem parrySystem;
     private PlayerBattleController playerController;
     private bool lastParryWasSuccessful = false; // Track last parry result
+    private bool canInterceptPlayerActions = true; // Can be disabled during boss's own turn
     
     // Events
     public event Action OnBossParrySuccess;
@@ -232,7 +233,7 @@ public class BossBattleController : MonoBehaviour
             yield return new WaitForSeconds(remainingTime);
         }
         
-        Debug.Log($"Boss attack '{attackData.attackName}' complete");
+        Debug.Log($"🎭 <color=lime>Boss attack '{attackData.attackName}' COMPLETE - Coroutine ending</color>");
     }
     
     /// <summary>
@@ -241,6 +242,11 @@ public class BossBattleController : MonoBehaviour
     private void TryInterceptPlayerAttack(ActionType attackType)
     {
         if (!canParryPlayerAttacks) return;
+        if (!canInterceptPlayerActions)
+        {
+            Debug.Log($"🎭 <color=gray>Boss interception disabled (boss's own turn)</color>");
+            return; // Don't intercept during boss's own turn
+        }
         if (isParryingPlayer) return; // Already parrying
         if (!bossCharacter.IsAlive) return; // Can't parry if dead
         
@@ -406,9 +412,28 @@ public class BossBattleController : MonoBehaviour
         isParryingPlayer = false;
         isCounterAttacking = false;
         lastParryWasSuccessful = false;
+        canInterceptPlayerActions = true;
         StopAllCoroutines();
         
         Debug.Log($"🎭 Boss '{bossName}' reset for battle");
+    }
+    
+    /// <summary>
+    /// Enable boss ability to intercept player attacks (call at start of player turn)
+    /// </summary>
+    public void EnableInterception()
+    {
+        canInterceptPlayerActions = true;
+        Debug.Log($"🎭 <color=lime>Boss interception ENABLED</color>");
+    }
+    
+    /// <summary>
+    /// Disable boss ability to intercept player attacks (call at start of boss turn)
+    /// </summary>
+    public void DisableInterception()
+    {
+        canInterceptPlayerActions = false;
+        Debug.Log($"🎭 <color=red>Boss interception DISABLED</color>");
     }
     
     /// <summary>

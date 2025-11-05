@@ -103,8 +103,14 @@ public class TurnManager
     /// </summary>
     public void EndEnemyTurn()
     {
+        Debug.Log("🔄 <color=yellow>TurnManager.EndEnemyTurn() called!</color>");
+        Debug.Log($"🔄 <color=cyan>Current state: {CurrentBattleState}, Enemy turn state: {CurrentEnemyTurnState}</color>");
+        
         ChangeEnemyTurnState(EnemyTurnState.TurnEnd);
+        Debug.Log("🔄 <color=lime>Enemy turn state changed to TurnEnd</color>");
+        
         ChangeBattleState(BattleState.PlayerTurn);
+        Debug.Log("🔄 <color=lime>Battle state changed to PlayerTurn!</color>");
     }
 }
 

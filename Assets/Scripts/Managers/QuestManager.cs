@@ -177,46 +177,58 @@ public class QuestManager : MonoBehaviour
    /// </summary>
    private void EnableBossEnemy()
    {
+       Debug.Log("<color=magenta>=== EnableBossEnemy called! ===</color>");
+       
        if (bossEnemy == null)
        {
-           Debug.LogError("Boss enemy GameObject not assigned in QuestManager!");
+           Debug.LogError("<color=red>❌ Boss enemy GameObject not assigned in QuestManager Inspector!</color>");
            UpdateQuestState(RobberyQuestState.ReturnToMerchant); // Skip boss if not configured
            return;
        }
        
+       Debug.Log($"<color=cyan>✓ Boss enemy GameObject found: {bossEnemy.name}</color>");
+       Debug.Log($"<color=cyan>Boss enemy current active state: {bossEnemy.activeSelf}</color>");
+       
        // Enable the enemy GameObject
        bossEnemy.SetActive(true);
+       Debug.Log($"<color=green>✓ Boss enemy SetActive(true) called! New state: {bossEnemy.activeSelf}</color>");
        
        // Get BattleTrigger component
        BattleTrigger battleTrigger = bossEnemy.GetComponentInChildren<BattleTrigger>();
        if (battleTrigger != null)
        {
+           Debug.Log($"<color=cyan>✓ BattleTrigger found on boss: {battleTrigger.gameObject.name}</color>");
+           
            // Enable trigger immediately so player can approach and start battle
            battleTrigger.SetTriggerActive(true);
+           Debug.Log("<color=green>✓ Boss BattleTrigger activated!</color>");
            
            // Subscribe to battle end via BattleManager (reuse activeBattleManager if still exists)
            if (activeBattleManager == null)
            {
+               Debug.Log("<color=yellow>Looking for BattleManagerV2...</color>");
                activeBattleManager = FindFirstObjectByType<BattleManagerV2>();
            }
            
            if (activeBattleManager != null)
            {
+               Debug.Log("<color=cyan>✓ BattleManagerV2 found, subscribing to events...</color>");
+               
                // Unsubscribe from thief handler and subscribe to boss handler
                activeBattleManager.OnBattleEnded -= HandleThiefBattleEnded;
                activeBattleManager.OnBattleEnded += HandleBossBattleEnded;
-               Debug.Log("<color=green>Subscribed to BattleManager.OnBattleEnded for boss</color>");
+               Debug.Log("<color=green>✓ Subscribed to BattleManager.OnBattleEnded for boss</color>");
            }
            else
            {
-               Debug.LogError("BattleManagerV2 not found in scene!");
+               Debug.LogError("<color=red>❌ BattleManagerV2 not found in scene!</color>");
            }
            
-           Debug.Log("<color=cyan>¡Jefe habilitado! Acércate para iniciar el combate.</color>");
+           Debug.Log("<color=lime>🎭 ¡Jefe habilitado! Acércate para iniciar el combate.</color>");
        }
        else
        {
-           Debug.LogError("BattleTrigger not found on boss enemy! Add BattleTrigger component to boss GameObject.");
+           Debug.LogError($"<color=red>❌ BattleTrigger not found on boss enemy '{bossEnemy.name}'! Add BattleTrigger component to boss GameObject or its children.</color>");
            UpdateQuestState(RobberyQuestState.ReturnToMerchant); // Skip boss if misconfigured
        }
    }
@@ -364,6 +376,8 @@ public class QuestManager : MonoBehaviour
 
     public void PlayerForgivenThief()
     {
+        Debug.Log($"<color=yellow>=== PlayerForgivenThief called! Current state: {currentQuestState} ===</color>");
+        
         if (currentQuestState == RobberyQuestState.PostCombatDecision)
         {
             InteractionManager.Instance.EndInteraction();
@@ -372,9 +386,16 @@ public class QuestManager : MonoBehaviour
             ExecuteThiefForgiveness();
             
             // Enable boss encounter instead of going directly to merchant
+            Debug.Log("<color=cyan>About to enable boss enemy...</color>");
             EnableBossEnemy();
+            
+            Debug.Log("<color=cyan>About to update quest state to FindBoss...</color>");
             UpdateQuestState(RobberyQuestState.FindBoss);
-            Debug.Log("Ladrón perdonado. Ahora debes encontrar al jefe de los ladrones.");
+            Debug.Log("<color=green>Ladrón perdonado. Ahora debes encontrar al jefe de los ladrones.</color>");
+        }
+        else
+        {
+            Debug.LogWarning($"<color=red>PlayerForgivenThief called but state is {currentQuestState}, not PostCombatDecision!</color>");
         }
     }
 
@@ -489,9 +510,21 @@ public class QuestManager : MonoBehaviour
 
     private void UpdateQuestState(RobberyQuestState newState)
     {
+        RobberyQuestState oldState = currentQuestState;
         currentQuestState = newState;
-        Debug.Log($"<color=orange>Estado de Misión actualizado:</color> {newState}");
-        OnQuestStateChanged?.Invoke(currentQuestState);
+        Debug.Log($"<color=orange>📋 Estado de Misión actualizado:</color> {oldState} → <color=lime>{newState}</color>");
+        
+        // Check if anyone is listening to the event
+        if (OnQuestStateChanged != null)
+        {
+            int subscriberCount = OnQuestStateChanged.GetInvocationList().Length;
+            Debug.Log($"<color=cyan>📢 Firing OnQuestStateChanged event to {subscriberCount} subscriber(s)</color>");
+            OnQuestStateChanged?.Invoke(currentQuestState);
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>⚠️ OnQuestStateChanged has no subscribers!</color>");
+        }
     }
 
     public RobberyQuestState GetCurrentQuestState()

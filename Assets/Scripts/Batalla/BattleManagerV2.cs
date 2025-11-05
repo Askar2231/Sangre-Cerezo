@@ -462,6 +462,12 @@ public class BattleManagerV2 : MonoBehaviour
         playerController.Character.StaminaManager.RestoreToMax();
         UpdateTurnDisplayUI("PLAYER TURN");
         
+        // Enable boss interception during player turn
+        if (bossController != null)
+        {
+            bossController.EnableInterception();
+        }
+        
         // Enable UI buttons for player input
         if (uiButtonController != null)
         {
@@ -729,6 +735,12 @@ public class BattleManagerV2 : MonoBehaviour
         
         enemyController.Character.StaminaManager.RestoreToMax();
         
+        // Disable boss interception during its own turn
+        if (bossController != null)
+        {
+            bossController.DisableInterception();
+        }
+        
         // Update UI based on boss or regular enemy
         if (bossController != null)
         {
@@ -770,7 +782,7 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private IEnumerator BossThinkingRoutine()
     {
-        Debug.Log("🎭 Boss is thinking...");
+        Debug.Log("🎭 <color=cyan>Boss is thinking...</color>");
         yield return new WaitForSeconds(1f);
         
         // Boss chooses attack
@@ -778,12 +790,36 @@ public class BattleManagerV2 : MonoBehaviour
         
         if (chosenAttack != null)
         {
-            Debug.Log($"Boss chose: {chosenAttack.attackName}");
+            Debug.Log($"🎭 <color=yellow>Boss chose attack: {chosenAttack.attackName}</color>");
             turnManager.ChangeEnemyTurnState(EnemyTurnState.Attacking);
             
             // Execute boss attack instead of normal enemy attack
-            // FIXED: yield return to wait for the attack sequence to complete
-            yield return StartCoroutine(ExecuteBossAttackSequence(chosenAttack));
+            Debug.Log("🎭 <color=cyan>Starting boss attack sequence...</color>");
+            
+            // Start the attack sequence with a safety timeout
+            bool attackCompleted = false;
+            float timeout = 6f; // 15 second timeout
+            float elapsed = 0f;
+            
+            Coroutine attackCoroutine = StartCoroutine(ExecuteBossAttackSequenceWithFlag(chosenAttack, () => attackCompleted = true));
+            
+            // Wait for attack to complete or timeout
+            while (!attackCompleted && elapsed < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                elapsed += 0.1f;
+            }
+            
+            if (!attackCompleted)
+            {
+                Debug.LogError($"🎭 <color=red>⚠️⚠️⚠️ BOSS ATTACK TIMEOUT after {timeout} seconds! Force-ending turn...</color>");
+                StopCoroutine(attackCoroutine);
+                HandleEnemyAttackComplete(); // Force turn to end
+            }
+            else
+            {
+                Debug.Log("🎭 <color=lime>Boss attack sequence completed successfully!</color>");
+            }
         }
         else
         {
@@ -793,14 +829,20 @@ public class BattleManagerV2 : MonoBehaviour
     }
     
     /// <summary>
-    /// Execute boss attack sequence
+    /// Execute boss attack sequence with completion callback
     /// </summary>
-    private IEnumerator ExecuteBossAttackSequence(BossAttackData attackData)
+    private IEnumerator ExecuteBossAttackSequenceWithFlag(BossAttackData attackData, Action onComplete)
     {
+        Debug.Log("🎭 <color=orange>ExecuteBossAttackSequence started</color>");
         yield return bossController.ExecuteBossAttack(attackData, playerController.Character);
+        Debug.Log("🎭 <color=orange>ExecuteBossAttackSequence: Boss attack coroutine finished</color>");
         
         // After boss attack completes, continue turn
         HandleEnemyAttackComplete();
+        Debug.Log("🎭 <color=orange>ExecuteBossAttackSequence: HandleEnemyAttackComplete called</color>");
+        
+        // Signal completion
+        onComplete?.Invoke();
     }
 
     private void HandleEnemyThinkingComplete()
@@ -814,7 +856,8 @@ public class BattleManagerV2 : MonoBehaviour
 
     private void HandleEnemyAttackComplete()
     {
-        Debug.Log("Enemy attack complete");
+        Debug.Log("⚔️ <color=yellow>HandleEnemyAttackComplete called</color>");
+        Debug.Log($"⚔️ Current battle state: {currentBattleState}");
 
         // Actualizar UI de vida después del ataque enemigo
         UpdateHealthUI();
@@ -822,10 +865,12 @@ public class BattleManagerV2 : MonoBehaviour
         // Check if player is dead
         if (!playerController.Character.IsAlive)
         {
+            Debug.Log("⚔️ <color=red>Player is dead, not ending turn</color>");
             return; // Death handler will end battle
         }
 
         // Delay antes de terminar el turno enemigo
+        Debug.Log("⚔️ <color=cyan>Starting EndEnemyTurnWithDelay coroutine...</color>");
         StartCoroutine(EndEnemyTurnWithDelay(0.8f)); // 800ms delay
     }
 
@@ -834,10 +879,12 @@ public class BattleManagerV2 : MonoBehaviour
     /// </summary>
     private IEnumerator EndEnemyTurnWithDelay(float delay)
     {
+        Debug.Log($"⏰ <color=cyan>EndEnemyTurnWithDelay: Waiting {delay} seconds...</color>");
         yield return new WaitForSeconds(delay);
 
-        Debug.Log("Enemy turn ending after delay");
+        Debug.Log("⏰ <color=lime>EndEnemyTurnWithDelay: Delay complete, calling turnManager.EndEnemyTurn()</color>");
         turnManager.EndEnemyTurn();
+        Debug.Log("⏰ <color=lime>EndEnemyTurnWithDelay: turnManager.EndEnemyTurn() called successfully</color>");
     }
 
     #endregion
@@ -1333,12 +1380,21 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandleParryWindowStateChanged(bool isActive)
     {
         Debug.Log($"<color=cyan>[BattleManager]</color> 🛡️ HandleParryWindowStateChanged({isActive}) called from ParrySystem");
+        Debug.Log($"<color=cyan>[BattleManager]</color> 🎯 Current battle state: {currentBattleState}");
         
         // Notify BattleInputManager about parry window state
         if (inputManager != null)
         {
             Debug.Log($"<color=cyan>[BattleManager]</color> 📤 Calling BattleInputManager.SetParryWindowActive({isActive})");
             inputManager.SetParryWindowActive(isActive);
+            
+            // IMPORTANT FIX: Don't restore PlayerTurn input during enemy turn!
+            // When parry window closes during enemy turn, keep input disabled
+            if (!isActive && currentBattleState == BattleState.EnemyTurn)
+            {
+                Debug.Log($"<color=yellow>[BattleManager]</color> ⚠️ Parry window closed during ENEMY TURN - keeping input DISABLED");
+                inputManager.SetInputState(BattleInputState.Disabled);
+            }
             
             // VERIFICAR que se aplicó correctamente
             Debug.Log($"<color=cyan>[BattleManager]</color> 🔍 After SetParryWindowActive: InputManager.IsParryWindowActive = {inputManager.IsParryWindowActive}");
@@ -1663,13 +1719,32 @@ public class BattleManagerV2 : MonoBehaviour
             playerController.SetAttackCancelled(true);
         }
         
+        // Cancel the animation sequence
+        if (playerAnimationSequencer != null)
+        {
+            playerAnimationSequencer.StopSequence();
+            Debug.Log("⚠️ <color=yellow>Player animation cancelled!</color>");
+        }
+        
+        // Cancel any active QTE
+        if (qteManager != null)
+        {
+            qteManager.CancelQTE();
+            Debug.Log("⚠️ <color=yellow>QTE UI hidden!</color>");
+        }
+        
+        // Reset player to idle animation
+        if (playerController != null && playerController.Character != null && playerController.Character.Animator != null)
+        {
+            playerController.Character.Animator.Play("Idle", 0);
+            Debug.Log("⚠️ <color=yellow>Player animation reset to Idle</color>");
+        }
+        
         // Show notification
         if (notificationSystem != null)
         {
-            // TODO: Add ShowBossParry method to BattleNotificationSystem
-            // For now, show generic notification
-            Debug.Log("<color=yellow>🛡️ BOSS BLOCKED YOUR ATTACK!</color>");
-            // notificationSystem.ShowBossParry("Boss Blocked!");
+            notificationSystem.ShowPlayerParriedByBoss();
+            Debug.Log("<color=yellow>🛡️ BOSS BLOCKED YOUR ATTACK - Notification shown!</color>");
         }
         
         // Visual/audio feedback

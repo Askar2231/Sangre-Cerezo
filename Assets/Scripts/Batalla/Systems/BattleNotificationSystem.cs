@@ -97,6 +97,16 @@ public class BattleNotificationSystem : MonoBehaviour
     }
     
     /// <summary>
+    /// Show notification when player gets parried by the boss
+    /// </summary>
+    public void ShowPlayerParriedByBoss()
+    {
+        string message = "¡Tu ataque ha sido bloqueado!";
+        Debug.Log($"<color=red>[BattleNotificationSystem]</color> 🛡️ Showing PLAYER PARRIED notification: '{message}'");
+        ShowNotification(message, damageReceivedColor);
+    }
+    
+    /// <summary>
     /// Show notification for damage dealt (non-QTE)
     /// </summary>
     public void ShowDamageDealt(float damage)
