@@ -27,6 +27,10 @@ public class BattleCharacter : MonoBehaviour
     public StaminaManager StaminaManager { get; private set; }
     public Animator Animator => animator;
     
+    // Status Effect System
+    public StatusEffectManager StatusEffectManager { get; private set; }
+    public bool CanParry { get; set; } = true; // Can this character parry? (modified by status effects)
+    
     // Events
     public event Action<float, float> OnHealthChanged; // current, max
     public event Action<float> OnDamageTaken; // damage amount
@@ -38,6 +42,10 @@ public class BattleCharacter : MonoBehaviour
     {
         CurrentHealth = maxHealth;
         StaminaManager = new StaminaManager(maxStamina);
+        
+        // Initialize status effect system
+        StatusEffectManager = gameObject.AddComponent<StatusEffectManager>();
+        StatusEffectManager.Initialize(this);
     }
     
     /// <summary>
@@ -136,6 +144,15 @@ public class BattleCharacter : MonoBehaviour
         CurrentHealth = maxHealth;
         StaminaManager.RestoreToMax();
         OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
+        
+        // Clear all status effects from previous battle
+        if (StatusEffectManager != null)
+        {
+            StatusEffectManager.ClearAllEffects();
+        }
+        
+        // Reset parry ability
+        CanParry = true;
     }
 }
 

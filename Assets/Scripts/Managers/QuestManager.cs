@@ -7,6 +7,9 @@ public enum RobberyQuestState
     DialogueIntro,
     CombatActive,
     PostCombatDecision,
+    FindBoss,
+    BossCombatActive,
+    PostBossDecision,
     ReturnToMerchant,
     Completed,
     TalkToFirstNPC 
@@ -21,6 +24,8 @@ public class QuestManager : MonoBehaviour
     [SerializeField] private Decision thiefPostCombatDecision;     
     [SerializeField] private Decision finalMerchantDecision;       
     [SerializeField] private GameObject thiefEnemy; // Pre-placed enemy GameObject (disabled by default)
+    [SerializeField] private GameObject bossEnemy; // Boss enemy GameObject (disabled by default)
+    [SerializeField] private Decision bossPostCombatDecision; // Decision after defeating boss
     [SerializeField] private GameObject merchantNPC;               
     
     private RobberyQuestState currentQuestState = RobberyQuestState.NotStarted;
@@ -47,6 +52,7 @@ public class QuestManager : MonoBehaviour
         if (activeBattleManager != null)
         {
             activeBattleManager.OnBattleEnded -= HandleThiefBattleEnded;
+            activeBattleManager.OnBattleEnded -= HandleBossBattleEnded;
         }
         
         UnregisterChoiceCallbacks();
@@ -70,6 +76,8 @@ public class QuestManager : MonoBehaviour
         ChoiceEventSystem.Instance.RegisterChoice("merchant_decline_help", PlayerDeclinedHelp);
         ChoiceEventSystem.Instance.RegisterChoice("thief_forgive", PlayerForgivenThief);
         ChoiceEventSystem.Instance.RegisterChoice("thief_kill", PlayerKilledThief);
+        ChoiceEventSystem.Instance.RegisterChoice("boss_forgive", PlayerForgivenBoss);
+        ChoiceEventSystem.Instance.RegisterChoice("boss_kill", PlayerKilledBoss);
         ChoiceEventSystem.Instance.RegisterChoice("merchant_keep_omamori", PlayerKeptOmamori);
         ChoiceEventSystem.Instance.RegisterChoice("merchant_return_omamori", PlayerReturnedOmamori);
         
@@ -86,6 +94,8 @@ public class QuestManager : MonoBehaviour
             ChoiceEventSystem.Instance.UnregisterChoice("merchant_decline_help", PlayerDeclinedHelp);
             ChoiceEventSystem.Instance.UnregisterChoice("thief_forgive", PlayerForgivenThief);
             ChoiceEventSystem.Instance.UnregisterChoice("thief_kill", PlayerKilledThief);
+            ChoiceEventSystem.Instance.UnregisterChoice("boss_forgive", PlayerForgivenBoss);
+            ChoiceEventSystem.Instance.UnregisterChoice("boss_kill", PlayerKilledBoss);
             ChoiceEventSystem.Instance.UnregisterChoice("merchant_keep_omamori", PlayerKeptOmamori);
             ChoiceEventSystem.Instance.UnregisterChoice("merchant_return_omamori", PlayerReturnedOmamori);
         }
@@ -160,6 +170,64 @@ public class QuestManager : MonoBehaviour
            Debug.LogError("BattleTrigger not found on thief enemy! Add BattleTrigger component to thief GameObject.");
            UpdateQuestState(RobberyQuestState.NotStarted);
        }
+   }
+
+   /// <summary>
+   /// Enable the pre-placed boss enemy GameObject
+   /// </summary>
+   private void EnableBossEnemy()
+   {
+       if (bossEnemy == null)
+       {
+           Debug.LogError("Boss enemy GameObject not assigned in QuestManager!");
+           UpdateQuestState(RobberyQuestState.ReturnToMerchant); // Skip boss if not configured
+           return;
+       }
+       
+       // Enable the enemy GameObject
+       bossEnemy.SetActive(true);
+       
+       // Get BattleTrigger component
+       BattleTrigger battleTrigger = bossEnemy.GetComponentInChildren<BattleTrigger>();
+       if (battleTrigger != null)
+       {
+           // Enable trigger immediately so player can approach and start battle
+           battleTrigger.SetTriggerActive(true);
+           
+           // Subscribe to battle end via BattleManager (reuse activeBattleManager if still exists)
+           if (activeBattleManager == null)
+           {
+               activeBattleManager = FindFirstObjectByType<BattleManagerV2>();
+           }
+           
+           if (activeBattleManager != null)
+           {
+               // Unsubscribe from thief handler and subscribe to boss handler
+               activeBattleManager.OnBattleEnded -= HandleThiefBattleEnded;
+               activeBattleManager.OnBattleEnded += HandleBossBattleEnded;
+               Debug.Log("<color=green>Subscribed to BattleManager.OnBattleEnded for boss</color>");
+           }
+           else
+           {
+               Debug.LogError("BattleManagerV2 not found in scene!");
+           }
+           
+           Debug.Log("<color=cyan>¡Jefe habilitado! Acércate para iniciar el combate.</color>");
+       }
+       else
+       {
+           Debug.LogError("BattleTrigger not found on boss enemy! Add BattleTrigger component to boss GameObject.");
+           UpdateQuestState(RobberyQuestState.ReturnToMerchant); // Skip boss if misconfigured
+       }
+   }
+
+   /// <summary>
+   /// Called when player reaches the boss trigger (NOT USED - kept for potential future use)
+   /// </summary>
+   private void OnPlayerReachedBoss()
+   {
+       Debug.Log("<color=yellow>Player reached boss! Starting boss combat...</color>");
+       UpdateQuestState(RobberyQuestState.BossCombatActive);
    }
 
   public void StartThiefCombat()
@@ -252,6 +320,48 @@ public class QuestManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Handles the boss battle ended event from BattleManagerV2
+    /// </summary>
+    private void HandleBossBattleEnded(BattleResult result)
+    {
+        Debug.Log($"<color=cyan>Boss battle ended with result: {result}</color>");
+        
+        // Unsubscribe from event
+        if (activeBattleManager != null)
+        {
+            activeBattleManager.OnBattleEnded -= HandleBossBattleEnded;
+            activeBattleManager = null;
+        }
+        
+        // Check if player won
+        if (result == BattleResult.PlayerVictory)
+        {
+            Debug.Log("¡Victoria contra el jefe! Decide su destino...");
+            UpdateQuestState(RobberyQuestState.PostBossDecision);
+            
+            // Present post-boss combat decision
+            if (bossPostCombatDecision != null)
+            {
+                InteractionManager.Instance.StartInteraction(bossPostCombatDecision);
+            }
+            else
+            {
+                Debug.LogError("Boss post-combat decision not assigned! Skipping to merchant.");
+                UpdateQuestState(RobberyQuestState.ReturnToMerchant);
+            }
+        }
+        else
+        {
+            Debug.Log("Derrota contra el jefe. Reiniciando misión...");
+            if (bossEnemy != null && bossEnemy.activeInHierarchy)
+            {
+                bossEnemy.SetActive(false);
+            }
+            UpdateQuestState(RobberyQuestState.NotStarted);
+        }
+    }
+
     public void PlayerForgivenThief()
     {
         if (currentQuestState == RobberyQuestState.PostCombatDecision)
@@ -261,8 +371,10 @@ public class QuestManager : MonoBehaviour
             // NUEVO: Ejecutar animación de perdón
             ExecuteThiefForgiveness();
             
-            UpdateQuestState(RobberyQuestState.ReturnToMerchant);
-            Debug.Log("Ladrón perdonado. Vuelve con el Mercader.");
+            // Enable boss encounter instead of going directly to merchant
+            EnableBossEnemy();
+            UpdateQuestState(RobberyQuestState.FindBoss);
+            Debug.Log("Ladrón perdonado. Ahora debes encontrar al jefe de los ladrones.");
         }
     }
 
@@ -277,6 +389,34 @@ public class QuestManager : MonoBehaviour
             
             UpdateQuestState(RobberyQuestState.ReturnToMerchant);
             Debug.Log("Ladrón eliminado. Vuelve con el Mercader.");
+        }
+    }
+
+    public void PlayerForgivenBoss()
+    {
+        if (currentQuestState == RobberyQuestState.PostBossDecision)
+        {
+            InteractionManager.Instance.EndInteraction();
+            
+            // Execute boss forgiveness animation
+            ExecuteBossForgiveness();
+            
+            UpdateQuestState(RobberyQuestState.ReturnToMerchant);
+            Debug.Log("Jefe perdonado. Vuelve con el Mercader.");
+        }
+    }
+
+    public void PlayerKilledBoss()
+    {
+        if (currentQuestState == RobberyQuestState.PostBossDecision)
+        {
+            InteractionManager.Instance.EndInteraction();
+            
+            // Execute boss death animation
+            ExecuteBossDeath();
+            
+            UpdateQuestState(RobberyQuestState.ReturnToMerchant);
+            Debug.Log("Jefe eliminado. Vuelve con el Mercader.");
         }
     }
 
@@ -478,6 +618,120 @@ public class QuestManager : MonoBehaviour
         {
             Debug.Log("<color=green>Ladrón desactivado (fallback)</color>");
             thiefEnemy.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Execute boss death animation using BattleCharacter
+    /// </summary>
+    private void ExecuteBossDeath()
+    {
+        if (bossEnemy != null)
+        {
+            // Find BattleCharacter on the boss enemy
+            BattleCharacter bossCharacter = bossEnemy.GetComponent<BattleCharacter>();
+            if (bossCharacter != null)
+            {
+                Debug.Log("<color=red>Ejecutando muerte del jefe...</color>");
+                
+                // Force death animation
+                if (bossCharacter.Animator != null)
+                {
+                    bossCharacter.Animator.Play("Asesinado", 0);
+                }
+                
+                // Destroy after delay to show animation
+                StartCoroutine(DestroyBossAfterDeathAnimation(3f));
+            }
+            else
+            {
+                Debug.LogWarning("BattleCharacter not found on boss enemy!");
+                // Fallback: destroy directly after delay
+                StartCoroutine(DestroyBossAfterDelay(2f));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Execute boss forgiveness animation using BattleCharacter
+    /// </summary>
+    private void ExecuteBossForgiveness()
+    {
+        if (bossEnemy != null)
+        {
+            // Find BattleCharacter on the boss enemy
+            BattleCharacter bossCharacter = bossEnemy.GetComponent<BattleCharacter>();
+            if (bossCharacter != null)
+            {
+                Debug.Log("<color=green>Ejecutando perdón del jefe...</color>");
+                
+                // Use forgiveness animation (boss leaves)
+                if (bossCharacter.Animator != null)
+                {
+                    bossCharacter.Animator.Play("Perdonado", 0);
+                }
+                
+                // Disable after delay to show animation
+                StartCoroutine(DisableBossAfterForgivenessAnimation(3f));
+            }
+            else
+            {
+                Debug.LogWarning("BattleCharacter not found on boss enemy!");
+                // Fallback: disable directly after delay
+                StartCoroutine(DisableBossAfterDelay(2f));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Destroy boss after death animation completes
+    /// </summary>
+    private System.Collections.IEnumerator DestroyBossAfterDeathAnimation(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (bossEnemy != null)
+        {
+            Debug.Log("<color=red>Jefe eliminado después de animación de muerte</color>");
+            Destroy(bossEnemy);
+        }
+    }
+
+    /// <summary>
+    /// Disable boss after forgiveness animation completes
+    /// </summary>
+    private System.Collections.IEnumerator DisableBossAfterForgivenessAnimation(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (bossEnemy != null)
+        {
+            Debug.Log("<color=green>Jefe se va después de ser perdonado</color>");
+            bossEnemy.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Fallback method to destroy boss after delay
+    /// </summary>
+    private System.Collections.IEnumerator DestroyBossAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (bossEnemy != null)
+        {
+            Debug.Log("<color=red>Jefe destruido (fallback)</color>");
+            Destroy(bossEnemy);
+        }
+    }
+
+    /// <summary>
+    /// Fallback method to disable boss after delay
+    /// </summary>
+    private System.Collections.IEnumerator DisableBossAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (bossEnemy != null)
+        {
+            Debug.Log("<color=green>Jefe desactivado (fallback)</color>");
+            bossEnemy.SetActive(false);
         }
     }
 

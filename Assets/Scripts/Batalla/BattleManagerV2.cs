@@ -80,6 +80,9 @@ public class BattleManagerV2 : MonoBehaviour
 
     [Header("UI Turn Display")]
     [SerializeField] private TextMeshProUGUI turnDisplayText; // AGREGAR ESTA LÍNEA
+    
+    [Header("Boss System")]
+    private BossBattleController bossController; // Detected automatically if enemy has boss component
 
     private void Awake()
     {
@@ -227,10 +230,35 @@ public class BattleManagerV2 : MonoBehaviour
         // Initialize controllers with proper AnimationSequencer reference
         playerController.Initialize(playerAnimationSequencer, qteManager, notificationSystem);
         enemyController.Initialize(parrySystem);
+        
+        // DETECT if enemy is a boss and initialize boss-specific systems
+        bossController = enemyController.GetComponent<BossBattleController>();
+        
+        if (bossController != null)
+        {
+            Debug.Log($"🎭 <color=red>BOSS BATTLE DETECTED: {bossController.BossName}</color>");
+            bossController.Initialize(parrySystem, playerController);
+            
+            // Subscribe to boss events
+            bossController.OnBossParrySuccess += HandleBossParrySuccess;
+            bossController.OnCounterAttackComplete += HandleBossCounterAttackComplete;
+            bossController.OnBossAttackChosen += HandleBossAttackChosen;
+            
+            UpdateTurnDisplayUI($"BOSS: {bossController.BossName}");
+        }
+        else
+        {
+            Debug.Log("Regular enemy battle");
+        }
 
         // Reset characters
         playerController.ResetForBattle();
         enemyController.ResetForBattle();
+        
+        if (bossController != null)
+        {
+            bossController.ResetForBattle();
+        }
 
         // Subscribe to events (IMPORTANTE: limpiar eventos anteriores)
         UnsubscribeFromEvents(); // Limpiar primero
@@ -700,7 +728,16 @@ public class BattleManagerV2 : MonoBehaviour
         currentBattleState = BattleState.EnemyTurn; // ACTUALIZAR estado
         
         enemyController.Character.StaminaManager.RestoreToMax();
-        UpdateTurnDisplayUI("ENEMY TURN");
+        
+        // Update UI based on boss or regular enemy
+        if (bossController != null)
+        {
+            UpdateTurnDisplayUI($"BOSS TURN: {bossController.BossName}");
+        }
+        else
+        {
+            UpdateTurnDisplayUI("ENEMY TURN");
+        }
         
         // DESHABILITAR INPUT
         if (inputManager != null)
@@ -716,7 +753,54 @@ public class BattleManagerV2 : MonoBehaviour
         }
         
         turnManager.ChangeEnemyTurnState(EnemyTurnState.Thinking);
-        enemyController.ExecuteThinking();
+        
+        // Use boss thinking or regular enemy thinking
+        if (bossController != null)
+        {
+            StartCoroutine(BossThinkingRoutine());
+        }
+        else
+        {
+            enemyController.ExecuteThinking();
+        }
+    }
+    
+    /// <summary>
+    /// Boss thinking routine - choose attack
+    /// </summary>
+    private IEnumerator BossThinkingRoutine()
+    {
+        Debug.Log("🎭 Boss is thinking...");
+        yield return new WaitForSeconds(1f);
+        
+        // Boss chooses attack
+        BossAttackData chosenAttack = bossController.ChooseAttackForTurn();
+        
+        if (chosenAttack != null)
+        {
+            Debug.Log($"Boss chose: {chosenAttack.attackName}");
+            turnManager.ChangeEnemyTurnState(EnemyTurnState.Attacking);
+            
+            // Execute boss attack instead of normal enemy attack
+            // FIXED: yield return to wait for the attack sequence to complete
+            yield return StartCoroutine(ExecuteBossAttackSequence(chosenAttack));
+        }
+        else
+        {
+            Debug.LogWarning("Boss has no attack data! Falling back to normal attack");
+            HandleEnemyThinkingComplete(); // Fallback to normal enemy behavior
+        }
+    }
+    
+    /// <summary>
+    /// Execute boss attack sequence
+    /// </summary>
+    private IEnumerator ExecuteBossAttackSequence(BossAttackData attackData)
+    {
+        yield return bossController.ExecuteBossAttack(attackData, playerController.Character);
+        
+        // After boss attack completes, continue turn
+        HandleEnemyAttackComplete();
     }
 
     private void HandleEnemyThinkingComplete()
@@ -898,6 +982,12 @@ public class BattleManagerV2 : MonoBehaviour
 
         // Limpiar UI
         HideActionSelectionUI();
+        
+        // Clear battle camera position (return to normal combat mode)
+        if (battleCamera != null)
+        {
+            battleCamera.ClearBattleCameraPosition();
+        }
 
         Debug.Log("Battle state completely cleaned for next battle");
     }
@@ -1063,6 +1153,14 @@ public class BattleManagerV2 : MonoBehaviour
             qteManager.OnQTESuccess -= HandleQTESuccess;
             qteManager.OnQTEFail -= HandleQTEFail;
         }
+        
+        // Unsubscribe from boss events
+        if (bossController != null)
+        {
+            bossController.OnBossParrySuccess -= HandleBossParrySuccess;
+            bossController.OnCounterAttackComplete -= HandleBossCounterAttackComplete;
+            bossController.OnBossAttackChosen -= HandleBossAttackChosen;
+        }
     }
 
     private void OnDestroy()
@@ -1209,6 +1307,9 @@ public class BattleManagerV2 : MonoBehaviour
             Transform cameraTransform = battleCamera.transform;
             cameraTransform.position = cameraTarget.position;
             cameraTransform.rotation = cameraTarget.rotation;
+            
+            // Notify the camera script to use this position during combat
+            battleCamera.SetBattleCameraPosition(cameraTarget);
             
             Debug.Log($"Camera positioned at: {cameraTarget.position}");
         }
@@ -1545,6 +1646,92 @@ public class BattleManagerV2 : MonoBehaviour
         }
     }
 
+    #endregion
+    
+    #region Boss System Handlers
+    
+    /// <summary>
+    /// Handle boss parry success event - boss parried player attack
+    /// </summary>
+    private void HandleBossParrySuccess()
+    {
+        Debug.Log("🛡️ <color=yellow>Boss parried player attack!</color>");
+        
+        // Cancel player's current attack damage
+        if (playerController != null)
+        {
+            playerController.SetAttackCancelled(true);
+        }
+        
+        // Show notification
+        if (notificationSystem != null)
+        {
+            // TODO: Add ShowBossParry method to BattleNotificationSystem
+            // For now, show generic notification
+            Debug.Log("<color=yellow>🛡️ BOSS BLOCKED YOUR ATTACK!</color>");
+            // notificationSystem.ShowBossParry("Boss Blocked!");
+        }
+        
+        // Visual/audio feedback
+        if (GamepadVibrationManager.Instance != null)
+        {
+            GamepadVibrationManager.Instance.VibrateOnTakeDamage(0.5f);
+        }
+    }
+    
+    /// <summary>
+    /// Handle boss counter-attack complete event
+    /// </summary>
+    private void HandleBossCounterAttackComplete()
+    {
+        Debug.Log("Boss counter-attack sequence complete");
+        
+        // Update UI after counter damage
+        UpdateHealthUI();
+        
+        // Check if player died from counter
+        if (!playerController.Character.IsAlive)
+        {
+            return; // Death handler will trigger
+        }
+        
+        // Continue player's turn (since boss parried during player turn)
+        if (currentBattleState == BattleState.PlayerTurn)
+        {
+            // Return to action selection
+            if (inputManager != null)
+            {
+                inputManager.EnablePlayerTurnInput();
+            }
+            
+            if (uiButtonController != null)
+            {
+                uiButtonController.EnableInput();
+            }
+            
+            turnManager.ChangePlayerTurnState(PlayerTurnState.SelectingAction);
+        }
+    }
+    
+    /// <summary>
+    /// Handle boss attack chosen event - for UI/effects
+    /// </summary>
+    private void HandleBossAttackChosen(BossAttackData attackData)
+    {
+        // Show UI indicator for special attacks
+        if (attackData != null && attackData.appliesStatusEffect)
+        {
+            Debug.Log($"⚠️ <color=orange>Boss prepares special attack: {attackData.attackName}</color>");
+            
+            if (notificationSystem != null)
+            {
+                // You can create a ShowBossSpecialAttack method in notification system
+                // For now, we'll just log it
+                Debug.Log($"Boss using: {attackData.attackName} ({attackData.description})");
+            }
+        }
+    }
+    
     #endregion
 
     #region Validation

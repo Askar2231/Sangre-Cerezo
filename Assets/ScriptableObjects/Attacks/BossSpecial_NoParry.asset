@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a19695195c5ffe4598b562d477201a1, type: 3}
+  m_Name: BossSpecial_NoParry
+  m_EditorClassIdentifier: 
+  attackName: Boss Attack
+  description: A powerful boss attack
+  animationStateName: SpecialAttack_Boss_NoParry
+  attackDuration: 3
+  damageApplicationTime: 0.75
+  baseDamage: 10
+  appliesStatusEffect: 1
+  effectType: 1
+  effectDuration: 1
+  effectApplicationChance: 1
+  attackEffectPrefab: {fileID: 0}
+  attackSoundName: 
+  attackIcon: {fileID: 0}
+  attackColor: {r: 1, g: 0, b: 0, a: 1}

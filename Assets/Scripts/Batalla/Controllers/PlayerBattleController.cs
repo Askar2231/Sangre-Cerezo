@@ -27,6 +27,9 @@ public class PlayerBattleController : MonoBehaviour
 
     // Current action being executed
     private BattleAction currentAction;
+    
+    // Attack cancellation (for boss parry)
+    private bool isAttackCancelled = false;
 
     public BattleCharacter Character => playerCharacter;
 
@@ -227,6 +230,16 @@ public class PlayerBattleController : MonoBehaviour
     /// </summary>
     private void HandleActionComplete()
     {
+        // Check if attack was cancelled (boss parried)
+        if (isAttackCancelled)
+        {
+            Debug.Log("⚠️ Attack was cancelled - no damage dealt (boss parried)");
+            isAttackCancelled = false; // Reset flag
+            
+            // Still complete the action but damage was already prevented
+            // (Boss parry system handled everything)
+        }
+        
         // Unsubscribe from the action
         if (currentAction != null)
         {
@@ -380,6 +393,24 @@ public class PlayerBattleController : MonoBehaviour
     {
         return availableSkills ?? new SkillData[0];
     }
+    
+    /// <summary>
+    /// Set whether current attack should be cancelled (called when boss parries)
+    /// </summary>
+    public void SetAttackCancelled(bool cancelled)
+    {
+        isAttackCancelled = cancelled;
+        
+        if (cancelled)
+        {
+            Debug.Log("⚠️ <color=yellow>Player attack has been cancelled by boss!</color>");
+        }
+    }
+    
+    /// <summary>
+    /// Check if current attack is cancelled (for use in AttackAction)
+    /// </summary>
+    public bool IsAttackCancelled => isAttackCancelled;
 
     /// <summary>
     /// Check if player has light attack available

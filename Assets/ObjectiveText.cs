@@ -22,7 +22,7 @@ public class ObjectiveText : MonoBehaviour
     {
         // Usar el asignado en el Inspector, si no, buscar en la escena
         if (questManager == null)
-            questManager = FindObjectOfType<QuestManager>();
+            questManager = FindFirstObjectByType<QuestManager>();
 
         if (questManager != null)
         {
@@ -57,6 +57,15 @@ public class ObjectiveText : MonoBehaviour
                 break;
             case RobberyQuestState.PostCombatDecision:
                 objectiveText.text = "Decide el destino del ladrón.";
+                break;
+            case RobberyQuestState.FindBoss:
+                objectiveText.text = "Encuentra al jefe de los ladrones.";
+                break;
+            case RobberyQuestState.BossCombatActive:
+                objectiveText.text = "Derrota al jefe de los ladrones.";
+                break;
+            case RobberyQuestState.PostBossDecision:
+                objectiveText.text = "Decide el destino del jefe.";
                 break;
             case RobberyQuestState.ReturnToMerchant:
                 objectiveText.text = "Regresa con el mercader.";

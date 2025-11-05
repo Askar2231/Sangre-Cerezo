@@ -75,6 +75,14 @@ public class AttackAction : BattleAction
     
     private void OnHitFrame()
     {
+        // Check if attack was cancelled by boss parry
+        PlayerBattleController playerCtrl = performer.GetComponent<PlayerBattleController>();
+        if (playerCtrl != null && playerCtrl.IsAttackCancelled)
+        {
+            Debug.Log("❌ Hit frame skipped - attack was parried by boss");
+            return; // Don't apply damage
+        }
+        
         // Calculate damage based on successful QTEs
         float totalDamage = attackData.baseDamage;
         

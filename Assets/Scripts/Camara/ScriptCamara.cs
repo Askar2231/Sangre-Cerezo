@@ -45,6 +45,7 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     float pitch;
     float lastInputTime;
     private bool inCombatMode = false;
+    private Transform battleCameraPosition; // Position from BattlePositionSetup (if provided)
 
     void Start()
     {
@@ -157,6 +158,40 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
         
         // Ángulo fijo para ver al enemigo
         pitch = combatPitch;
+        
+        // Clear any previous battle camera position reference
+        battleCameraPosition = null;
+    }
+    
+    /// <summary>
+    /// Set battle camera position from BattlePositionSetup
+    /// Called by BattleManager when transitioning to combat positions
+    /// </summary>
+    public void SetBattleCameraPosition(Transform cameraPosition)
+    {
+        battleCameraPosition = cameraPosition;
+        
+        if (cameraPosition != null)
+        {
+            Debug.Log($"Camera using BattlePositionSetup at {cameraPosition.position}");
+            
+            // Extract yaw and pitch from the provided position's rotation
+            Vector3 eulerAngles = cameraPosition.rotation.eulerAngles;
+            yaw = eulerAngles.y;
+            pitch = eulerAngles.x;
+            
+            // Normalize pitch to -180 to 180 range
+            if (pitch > 180f) pitch -= 360f;
+        }
+    }
+    
+    /// <summary>
+    /// Clear battle camera position (called when exiting combat)
+    /// </summary>
+    public void ClearBattleCameraPosition()
+    {
+        battleCameraPosition = null;
+        Debug.Log("Camera cleared BattlePositionSetup, returning to normal combat mode");
     }
 
     /// <summary>
@@ -164,7 +199,21 @@ public class ThirdPersonJRPGCamera : MonoBehaviour
     /// </summary>
     private void HandleCombatCamera()
     {
-        // Posición fija detrás del hombro derecho
+        // If BattlePositionSetup provided a camera position, use it
+        if (battleCameraPosition != null)
+        {
+            // Use the exact position and rotation from BattlePositionSetup
+            Vector3 setupPosition = battleCameraPosition.position;
+            Quaternion setupRotation = battleCameraPosition.rotation;
+            
+            // Smooth transition to the setup position
+            transform.position = Vector3.Lerp(transform.position, setupPosition, transitionSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.Lerp(transform.rotation, setupRotation, transitionSpeed * Time.deltaTime);
+            
+            return; // Don't use the offset-based positioning
+        }
+        
+        // Fallback: Posición fija detrás del hombro derecho (legacy behavior)
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
         Vector3 targetPosition = target.position + rotation * combatOffset;
         

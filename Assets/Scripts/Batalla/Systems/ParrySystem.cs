@@ -95,6 +95,26 @@ public class ParrySystem : MonoBehaviour
         Debug.Log("==========================================================");
         Debug.Log($"<color=cyan>[ParrySystem]</color> 🛡️ ProcessParryInput() CALLED! | isParryWindowActive: {isParryWindowActive}, parryAttempted: {parryAttempted}");
         
+        // NEW: Check if player can parry (status effects)
+        BattleCharacter playerCharacter = FindFirstObjectByType<PlayerBattleController>()?.Character;
+        if (playerCharacter != null && !playerCharacter.CanParry)
+        {
+            Debug.LogWarning("==========================================================");
+            Debug.LogWarning("❌❌❌ PARRY BLOCKED - STATUS EFFECT ACTIVE! ❌❌❌");
+            Debug.LogWarning("==========================================================");
+            Debug.LogWarning("<color=red>[ParrySystem]</color> ❌ Cannot parry! Status effect preventing parry!");
+            
+            // Show notification if available
+            BattleNotificationSystem notificationSystem = FindFirstObjectByType<BattleNotificationSystem>();
+            if (notificationSystem != null)
+            {
+                // You can add a ShowParryBlocked method to notification system
+                Debug.Log("<color=red>⚠️ Cannot Parry! (Status Effect)</color>");
+            }
+            
+            return;
+        }
+        
         if (!isParryWindowActive)
         {
             Debug.LogWarning("==========================================================");

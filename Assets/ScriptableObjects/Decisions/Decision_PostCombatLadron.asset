@@ -14,16 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   introductoryLines:
   - speakerName: "Ladr\xF3n"
-    sentence: "\xA1No me hagas nada!"
+    sentence: "\xA1No me hagas nada! Yo no tengo el omamori \xA1Lo juro! Lo tiene
+      mi jefe en su hogar..."
   choices:
-  - choiceText: "Perdonar al ladr\xF3n y tomar el \xEDtem"
+  - choiceText: "Perdonar al ladr\xF3n"
     karmaEffect: 10
     choiceId: thief_forgive
     onChoiceSelected:
       m_PersistentCalls:
         m_Calls: []
     endInteractionOnSelect: 1
-  - choiceText: "Matar al ladr\xF3n y tomar el \xEDtem"
+  - choiceText: "Matar al ladr\xF3n"
     karmaEffect: -10
     choiceId: thief_kill
     onChoiceSelected:
