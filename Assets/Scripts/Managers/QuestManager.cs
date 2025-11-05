@@ -234,9 +234,22 @@ public class QuestManager : MonoBehaviour
             activeBattleManager = null;
         }
         
-        // Call existing combat end logic
-        bool playerWon = (result == BattleResult.PlayerVictory);
-        OnThiefCombatEnd(playerWon);
+        // NUEVO: Solo cambiar estado si ganó, NO destruir enemigo automáticamente
+        if (result == BattleResult.PlayerVictory)
+        {
+            Debug.Log("¡Victoria! El enemigo está derrotado pero esperando tu decisión...");
+            UpdateQuestState(RobberyQuestState.PostCombatDecision);
+            InteractionManager.Instance.StartInteraction(thiefPostCombatDecision);
+        }
+        else
+        {
+            Debug.Log("Derrota. Reiniciando misión...");
+            if (thiefEnemy != null && thiefEnemy.activeInHierarchy)
+            {
+                thiefEnemy.SetActive(false);
+            }
+            UpdateQuestState(RobberyQuestState.NotStarted);
+        }
     }
 
     public void PlayerForgivenThief()
@@ -244,6 +257,10 @@ public class QuestManager : MonoBehaviour
         if (currentQuestState == RobberyQuestState.PostCombatDecision)
         {
             InteractionManager.Instance.EndInteraction();
+            
+            // NUEVO: Ejecutar animación de perdón
+            ExecuteThiefForgiveness();
+            
             UpdateQuestState(RobberyQuestState.ReturnToMerchant);
             Debug.Log("Ladrón perdonado. Vuelve con el Mercader.");
         }
@@ -254,6 +271,10 @@ public class QuestManager : MonoBehaviour
         if (currentQuestState == RobberyQuestState.PostCombatDecision)
         {
             InteractionManager.Instance.EndInteraction();
+            
+            // NUEVO: Ejecutar animación de muerte
+            ExecuteThiefDeath();
+            
             UpdateQuestState(RobberyQuestState.ReturnToMerchant);
             Debug.Log("Ladrón eliminado. Vuelve con el Mercader.");
         }
@@ -346,4 +367,118 @@ public class QuestManager : MonoBehaviour
 
     // Y en UpdateObjectiveFromRobberyQuest, agrega el texto:
     
+    /// <summary>
+    /// Execute thief death animation using BattleCharacter
+    /// </summary>
+    private void ExecuteThiefDeath()
+    {
+        if (thiefEnemy != null)
+        {
+            // Buscar BattleCharacter en el enemigo
+            BattleCharacter enemyCharacter = thiefEnemy.GetComponent<BattleCharacter>();
+            if (enemyCharacter != null)
+            {
+                Debug.Log("<color=red>Ejecutando muerte del ladrón...</color>");
+                
+                // Forzar animación de muerte
+                if (enemyCharacter.Animator != null)
+                {
+                    enemyCharacter.Animator.Play("Asesinado", 0);
+                }
+                
+                // Destruir después de un delay para que se vea la animación
+                StartCoroutine(DestroyThiefAfterDeathAnimation(3f));
+            }
+            else
+            {
+                Debug.LogWarning("BattleCharacter not found on thief enemy!");
+                // Fallback: destroy directly after delay
+                StartCoroutine(DestroyThiefAfterDelay(2f));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Execute thief forgiveness animation using BattleCharacter
+    /// </summary>
+    private void ExecuteThiefForgiveness()
+    {
+        if (thiefEnemy != null)
+        {
+            // Buscar BattleCharacter en el enemigo
+            BattleCharacter enemyCharacter = thiefEnemy.GetComponent<BattleCharacter>();
+            if (enemyCharacter != null)
+            {
+                Debug.Log("<color=green>Ejecutando perdón del ladrón...</color>");
+                
+                // Usar animación de victoria como "perdón" (se va feliz)
+                if (enemyCharacter.Animator != null)
+                {
+                    enemyCharacter.Animator.Play("Perdonado", 0); // O cualquier animación de "irse"
+                }
+                
+                // Desactivar después de un delay para que se vea la animación
+                StartCoroutine(DisableThiefAfterForgivenessAnimation(3f));
+            }
+            else
+            {
+                Debug.LogWarning("BattleCharacter not found on thief enemy!");
+                // Fallback: disable directly after delay
+                StartCoroutine(DisableThiefAfterDelay(2f));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Destroy thief after death animation completes
+    /// </summary>
+    private System.Collections.IEnumerator DestroyThiefAfterDeathAnimation(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (thiefEnemy != null)
+        {
+            Debug.Log("<color=red>Ladrón eliminado después de animación de muerte</color>");
+            Destroy(thiefEnemy);
+        }
+    }
+
+    /// <summary>
+    /// Disable thief after forgiveness animation completes
+    /// </summary>
+    private System.Collections.IEnumerator DisableThiefAfterForgivenessAnimation(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (thiefEnemy != null)
+        {
+            Debug.Log("<color=green>Ladrón se va después de ser perdonado</color>");
+            thiefEnemy.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Fallback method to destroy thief after delay
+    /// </summary>
+    private System.Collections.IEnumerator DestroyThiefAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (thiefEnemy != null)
+        {
+            Debug.Log("<color=red>Ladrón destruido (fallback)</color>");
+            Destroy(thiefEnemy);
+        }
+    }
+
+    /// <summary>
+    /// Fallback method to disable thief after delay
+    /// </summary>
+    private System.Collections.IEnumerator DisableThiefAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (thiefEnemy != null)
+        {
+            Debug.Log("<color=green>Ladrón desactivado (fallback)</color>");
+            thiefEnemy.SetActive(false);
+        }
+    }
+
 }
