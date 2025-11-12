@@ -124,9 +124,13 @@ public class ParrySystem : MonoBehaviour
             return;
         }
         
+        // FIXED: Prevenir spam de parry - Solo un intento por ventana
         if (parryAttempted)
         {
-            Debug.LogWarning("<color=yellow>[ParrySystem]</color> ⚠️ Parry already attempted in this window!");
+            Debug.LogWarning("==========================================================");
+            Debug.LogWarning("❌❌❌ PARRY REJECTED - ALREADY ATTEMPTED! ❌❌❌");
+            Debug.LogWarning("==========================================================");
+            Debug.LogWarning("<color=yellow>[ParrySystem]</color> ⚠️ Parry already attempted in this window! No more attempts allowed.");
             return;
         }
         
@@ -155,14 +159,15 @@ public class ParrySystem : MonoBehaviour
 
         isParryWindowActive = true;
         parryWindowStartTime = Time.time;
-        parryAttempted = false;
+        parryAttempted = false; // RESET: Permitir UN intento en esta nueva ventana
 
         Debug.Log($"<color=lime>[ParrySystem]</color> 🛡️ PARRY WINDOW OPENED! Duration: {parryWindowDuration}s, StartTime: {parryWindowStartTime}");
+        Debug.Log($"<color=cyan>[ParrySystem]</color> 🔄 parryAttempted reset to FALSE - ONE attempt allowed in this window");
 
         OnParryWindowActive?.Invoke(true);
         Debug.Log($"<color=lime>[ParrySystem]</color> 📢 OnParryWindowActive(true) event fired!");
         
-        Debug.Log($"<color=yellow>⚔️⚔️⚔️ PARRY WINDOW ACTIVE - PRESS PARRY BUTTON NOW! ⚔️⚔️⚔️</color>");
+        Debug.Log($"<color=yellow>⚔️⚔️⚔️ PARRY WINDOW ACTIVE - YOU HAVE ONE CHANCE! ⚔️⚔️⚔️</color>");
         Debug.Log("==========================================================");
     }
 
