@@ -3,11 +3,18 @@ using System.Collections;
 using DG.Tweening;
 
 /// <summary>
-/// Manages all camera effects during combat (shake, zoom, slow motion, etc.)
-/// Subscribes to combat events and triggers appropriate visual feedback
+/// Manages all camera effects and combat sounds during combat (shake, zoom, slow motion, audio feedback, etc.)
+/// Subscribes to combat events and triggers appropriate visual and audio feedback
 /// </summary>
 public class CameraEffectManager : MonoBehaviour
 {
+    [Header("Audio Effects")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip swordClashSound; // Para parrear - choque de espadas
+    [SerializeField] private AudioClip swordCutSound;   // Para golpear/ser golpeado - corte
+    [SerializeField] private float audioVolume = 1f;
+    [SerializeField] private bool enableAudioEffects = true;
+    
     [Header("Parry Effects")]
     [SerializeField] private float parryShakeIntensity = 0.8f;
     [SerializeField] private float parryShakeDuration = 0.3f;
@@ -57,6 +64,24 @@ public class CameraEffectManager : MonoBehaviour
         
         if (mainCamera != null)
             originalCameraPosition = mainCamera.transform.localPosition;
+        
+        // Auto-find or create AudioSource
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+        }
+        
+        // Configure AudioSource for combat effects
+        if (audioSource != null)
+        {
+            audioSource.playOnAwake = false;
+            audioSource.volume = audioVolume;
+            Debug.Log("<color=cyan>[CameraEffects]</color> 🔊 AudioSource configured for combat effects");
+        }
     }
     
     private void OnEnable()
@@ -170,6 +195,9 @@ public class CameraEffectManager : MonoBehaviour
     {
         Debug.Log($"<color=yellow>[CameraEffects]</color> 🛡️ Parry success! Perfect: {wasPerfect}");
         
+        // Play sword clash sound for parry
+        PlayAudioEffect(swordClashSound);
+        
         if (wasPerfect)
         {
             TriggerPerfectParryEffect();
@@ -189,6 +217,8 @@ public class CameraEffectManager : MonoBehaviour
     private void OnQTESuccess()
     {
         Debug.Log("<color=lime>[CameraEffects]</color> ⚡ QTE Success!");
+        // Play cut sound for successful QTE
+        PlayAudioEffect(swordCutSound);
         CameraShake(qteSuccessShakeIntensity, qteSuccessShakeDuration);
     }
     
@@ -201,12 +231,16 @@ public class CameraEffectManager : MonoBehaviour
     private void OnPlayerDamageTaken(float damage)
     {
         Debug.Log($"<color=red>[CameraEffects]</color> 💥 Player took {damage} damage!");
+        // Play cut sound when player is hit
+        PlayAudioEffect(swordCutSound);
         CameraShake(playerHitShakeIntensity, playerHitShakeDuration);
     }
     
     private void OnEnemyDamageTaken(float damage)
     {
         Debug.Log($"<color=orange>[CameraEffects]</color> 💥 Enemy took {damage} damage!");
+        // Play cut sound when enemy is hit
+        PlayAudioEffect(swordCutSound);
         CameraShake(enemyHitShakeIntensity, enemyHitShakeDuration);
     }
     
@@ -234,12 +268,14 @@ public class CameraEffectManager : MonoBehaviour
     {
         Debug.Log("<color=cyan>[CameraEffects]</color> 🛡️ Triggering parry effect");
         CameraShake(parryShakeIntensity, parryShakeDuration);
+        // Audio already played in OnParrySuccess
     }
     
     private void TriggerPerfectParryEffect()
     {
         Debug.Log("<color=yellow>[CameraEffects]</color> ⭐ Triggering PERFECT parry effect");
         CameraShake(perfectParryShakeIntensity, perfectParryShakeDuration);
+        // Audio already played in OnParrySuccess
         
         if (enableSlowMotionOnPerfectParry)
         {
@@ -250,13 +286,58 @@ public class CameraEffectManager : MonoBehaviour
     public void TriggerLightAttackEffect()
     {
         Debug.Log("<color=cyan>[CameraEffects]</color> ⚔️ Light attack effect");
+        // Play cut sound for light attack
+        PlayAudioEffect(swordCutSound);
         CameraShake(lightAttackShakeIntensity, lightAttackShakeDuration);
     }
     
     public void TriggerHeavyAttackEffect()
     {
         Debug.Log("<color=cyan>[CameraEffects]</color> ⚔️ Heavy attack effect");
+        // Play cut sound for heavy attack
+        PlayAudioEffect(swordCutSound);
         CameraShake(heavyAttackShakeIntensity, heavyAttackShakeDuration);
+    }
+    
+    /// <summary>
+    /// Trigger counter-attack effect (called from BattleManager)
+    /// </summary>
+    public void TriggerCounterAttackEffect()
+    {
+        Debug.Log("<color=yellow>[CameraEffects]</color> ⚡ Counter-attack effect (parry retaliation)");
+        
+        // Play cut sound for counter-attack
+        PlayAudioEffect(swordCutSound);
+        
+        // Use heavy attack shake for more impact
+        CameraShake(heavyAttackShakeIntensity, heavyAttackShakeDuration);
+    }
+    
+    /// <summary>
+    /// Play audio effect with proper volume and error handling
+    /// </summary>
+    private void PlayAudioEffect(AudioClip clip)
+    {
+        if (!enableAudioEffects)
+        {
+            Debug.Log("<color=gray>[CameraEffects]</color> 🔇 Audio effects disabled");
+            return;
+        }
+        
+        if (audioSource == null)
+        {
+            Debug.LogWarning("<color=yellow>[CameraEffects]</color> ⚠️ AudioSource not found!");
+            return;
+        }
+        
+        if (clip == null)
+        {
+            Debug.LogWarning("<color=yellow>[CameraEffects]</color> ⚠️ Audio clip is null!");
+            return;
+        }
+        
+        Debug.Log($"<color=green>[CameraEffects]</color> 🔊 Playing audio: {clip.name}");
+        audioSource.PlayOneShot(clip, audioVolume);
     }
     
     private void CameraShake(float intensity, float duration)
@@ -358,6 +439,43 @@ public class CameraEffectManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Manually play sword clash sound (for external scripts)
+    /// </summary>
+    public void PlaySwordClashSound()
+    {
+        PlayAudioEffect(swordClashSound);
+    }
+    
+    /// <summary>
+    /// Manually play sword cut sound (for external scripts)
+    /// </summary>
+    public void PlaySwordCutSound()
+    {
+        PlayAudioEffect(swordCutSound);
+    }
+    
+    /// <summary>
+    /// Set audio volume for all combat effects
+    /// </summary>
+    public void SetAudioVolume(float volume)
+    {
+        audioVolume = Mathf.Clamp01(volume);
+        if (audioSource != null)
+        {
+            audioSource.volume = audioVolume;
+        }
+    }
+    
+    /// <summary>
+    /// Toggle audio effects on/off
+    /// </summary>
+    public void SetAudioEnabled(bool enabled)
+    {
+        enableAudioEffects = enabled;
+        Debug.Log($"<color=cyan>[CameraEffects]</color> 🔊 Audio effects {(enabled ? "enabled" : "disabled")}");
+    }
+    
+    /// <summary>
     /// Check if camera is currently shaking
     /// </summary>
     public bool IsShaking => isShaking;
@@ -382,6 +500,18 @@ public class CameraEffectManager : MonoBehaviour
     private void TestHeavyAttackEffect()
     {
         TriggerHeavyAttackEffect();
+    }
+    
+    [ContextMenu("Test Sword Clash Sound")]
+    private void TestSwordClashSound()
+    {
+        PlaySwordClashSound();
+    }
+    
+    [ContextMenu("Test Sword Cut Sound")]
+    private void TestSwordCutSound()
+    {
+        PlaySwordCutSound();
     }
     
     #endregion

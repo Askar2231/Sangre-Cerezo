@@ -1605,6 +1605,19 @@ public class BattleManagerV2 : MonoBehaviour
             // Wait a bit for animation to reach hit frame (adjust timing as needed)
             yield return new WaitForSeconds(0.4f);
 
+            // NUEVO: Agregar efectos de cámara y sonido para contraataque
+            CameraEffectManager cameraEffects = FindObjectOfType<CameraEffectManager>();
+            if (cameraEffects != null)
+            {
+                // Usar el efecto de ataque pesado para contraataques (más impacto)
+                cameraEffects.TriggerHeavyAttackEffect();
+                Debug.Log("<color=cyan>[BattleManager]</color> 📸 Counter-attack camera effects triggered!");
+            }
+            else
+            {
+                Debug.LogWarning("<color=yellow>[BattleManager]</color> ⚠️ CameraEffectManager not found!");
+            }
+
             // Deal counter attack damage to enemy
             float enemyHealthBefore = enemyController.Character.CurrentHealth;
             enemyController.Character.TakeDamage(counterAttackDamage);

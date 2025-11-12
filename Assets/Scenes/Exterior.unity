@@ -14970,6 +14970,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4bdbc87db161414993045c662983e67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  audioSource: {fileID: 1535063833}
+  swordClashSound: {fileID: 8300000, guid: 5bf8b8204858075479d009229afaf582, type: 3}
+  swordCutSound: {fileID: 8300000, guid: 7e0ef604f632d9c48b2628e954763950, type: 3}
+  audioVolume: 1
+  enableAudioEffects: 1
   parryShakeIntensity: 0.8
   parryShakeDuration: 0.3
   perfectParryShakeIntensity: 1.2
