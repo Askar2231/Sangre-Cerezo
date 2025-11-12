@@ -30,6 +30,9 @@ public class BattleManagerV2 : MonoBehaviour
     [SerializeField] private GameObject generalUICanvas; // UI shown outside of combat (Karma, etc.)
     [SerializeField] private GameObject battleUICanvas; // UI shown during combat (optional, if you have a separate battle canvas)
 
+    [Header("UI Systems")]
+    [SerializeField] private BattleCombatUIController combatUIController;
+
     [Header("Camera")]
     [SerializeField] private ThirdPersonJRPGCamera battleCamera;
     
@@ -73,13 +76,8 @@ public class BattleManagerV2 : MonoBehaviour
     [SerializeField] private float parryStaminaReward = 30f;
     [SerializeField] private string counterAttackAnimationState = "CounterAttack";
 
-    [Header("UI Health Display")]
-    [SerializeField] private TextMeshProUGUI playerHealthText;
-    [SerializeField] private TextMeshProUGUI enemyHealthText;
-    [SerializeField] private TextMeshProUGUI playerStaminaText;
-
     [Header("UI Turn Display")]
-    [SerializeField] private TextMeshProUGUI turnDisplayText; // AGREGAR ESTA LÍNEA
+    [SerializeField] private TextMeshProUGUI turnDisplayText;
     
     [Header("Boss System")]
     private BossBattleController bossController; // Detected automatically if enemy has boss component
@@ -269,8 +267,27 @@ public class BattleManagerV2 : MonoBehaviour
         turnManager.OnPlayerTurnStateChanged += HandlePlayerTurnStateChanged;
         turnManager.OnEnemyTurnStateChanged += HandleEnemyTurnStateChanged;
 
-        // Actualizar UI inicial de vida
-        UpdateHealthUI();
+        // Initialize combat UI (NEW)
+        if (combatUIController != null)
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                Debug.LogWarning("[BattleManager] Camera.main not found! Combat UI worldspace features may not work correctly.");
+            }
+            
+            combatUIController.Initialize(mainCamera);
+            combatUIController.SetupPlayerUI(
+                playerController.Character, 
+                playerController.Character.transform
+            );
+            combatUIController.SetupEnemyUI(
+                enemyController.Character, 
+                enemyController.Character.transform,
+                playerController.Character.transform
+            );
+            combatUIController.ShowUI();
+        }
 
         // Mostrar que la batalla está comenzando
         UpdateTurnDisplayUI("BATTLE START");
@@ -540,9 +557,6 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandlePlayerActionComplete()
     {
         Debug.Log("=== PLAYER ACTION COMPLETE ===");
-        
-        // Actualizar UI de vida después de la acción del jugador
-        UpdateHealthUI();
         
         // Check if enemy is dead
         if (!enemyController.Character.IsAlive)
@@ -869,9 +883,6 @@ public class BattleManagerV2 : MonoBehaviour
         Debug.Log("⚔️ <color=yellow>HandleEnemyAttackComplete called</color>");
         Debug.Log($"⚔️ Current battle state: {currentBattleState}");
 
-        // Actualizar UI de vida después del ataque enemigo
-        UpdateHealthUI();
-
         // Check if player is dead
         if (!playerController.Character.IsAlive)
         {
@@ -1029,6 +1040,13 @@ public class BattleManagerV2 : MonoBehaviour
         // Cleanup events
         UnsubscribeFromEvents();
 
+        // Cleanup combat UI
+        if (combatUIController != null)
+        {
+            combatUIController.CleanupEnemyUI();
+            combatUIController.HideUI();
+        }
+
         // Limpiar referencias de batalla
         enemyController = null;
         turnManager = null;
@@ -1070,45 +1088,6 @@ public class BattleManagerV2 : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates player health display
-    /// </summary>
-    private void UpdatePlayerHealthUI()
-    {
-        if (playerHealthText != null && playerController?.Character != null)
-        {
-            float currentHP = playerController.Character.CurrentHealth;
-            float maxHP = playerController.Character.MaxHealth;
-            playerHealthText.text = $"Player HP: {currentHP:F0}/{maxHP:F0}";
-        }
-    }
-
-    /// <summary>
-    /// Updates enemy health display
-    /// </summary>
-    private void UpdateEnemyHealthUI()
-    {
-        if (enemyHealthText != null && enemyController?.Character != null)
-        {
-            float currentHP = enemyController.Character.CurrentHealth;
-            float maxHP = enemyController.Character.MaxHealth;
-            enemyHealthText.text = $"Enemy HP: {currentHP:F0}/{maxHP:F0}";
-        }
-    }
-
-    /// <summary>
-    /// Updates player stamina display
-    /// </summary>
-    private void UpdatePlayerStaminaUI()
-    {
-        if (playerStaminaText != null && playerController?.Character != null)
-        {
-            float currentStamina = playerController.Character.StaminaManager.CurrentStamina;
-            float maxStamina = playerController.Character.StaminaManager.MaxStamina;
-            playerStaminaText.text = $"Player Stamina: {currentStamina:F0}/{maxStamina:F0}";
-        }
-    }
-
-    /// <summary>
     /// Updates turn display text
     /// </summary>
     private void UpdateTurnDisplayUI(string turnText)
@@ -1117,16 +1096,6 @@ public class BattleManagerV2 : MonoBehaviour
         {
             turnDisplayText.text = turnText;
         }
-    }
-
-    /// <summary>
-    /// Updates both health UI elements
-    /// </summary>
-    private void UpdateHealthUI()
-    {
-        UpdatePlayerHealthUI();
-        UpdateEnemyHealthUI();
-        UpdatePlayerStaminaUI(); // AGREGAR ESTA LÍNEA
     }
     
     /// <summary>
@@ -1572,9 +1541,6 @@ public class BattleManagerV2 : MonoBehaviour
             float staminaAfter = playerController.Character.StaminaManager.CurrentStamina;
             
             Debug.Log($"<color=cyan>Parry Reward: +{parryStaminaReward} stamina! ({staminaBefore:F0} → {staminaAfter:F0})</color>");
-            
-            // Update UI immediately to show stamina reward
-            UpdatePlayerStaminaUI();
         }
 
         // Ejecutar contrataque automático del jugador
@@ -1624,9 +1590,6 @@ public class BattleManagerV2 : MonoBehaviour
             float enemyHealthAfter = enemyController.Character.CurrentHealth;
             
             Debug.Log($"<color=red>Enemy took {counterAttackDamage} counter damage! ({enemyHealthBefore:F0} → {enemyHealthAfter:F0})</color>");
-
-            // Actualizar UI
-            UpdateHealthUI();
 
             // Play enemy hit reaction
             if (enemyController.Character.Animator != null)
@@ -1789,9 +1752,6 @@ public class BattleManagerV2 : MonoBehaviour
     private void HandleBossCounterAttackComplete()
     {
         Debug.Log("Boss counter-attack sequence complete");
-        
-        // Update UI after counter damage
-        UpdateHealthUI();
         
         // Check if player died from counter
         if (!playerController.Character.IsAlive)
