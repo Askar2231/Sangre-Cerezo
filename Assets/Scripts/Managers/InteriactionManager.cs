@@ -158,7 +158,7 @@ public class InteractionManager : MonoBehaviour
         Debug.Log($"<color=yellow>Choice ID: {choice.choiceId}</color>");
         Debug.Log($"<color=yellow>Karma Effect: {choice.karmaEffect}</color>");
         Debug.Log($"<color=yellow>End Interaction: {choice.endInteractionOnSelect}</color>");
-        
+
         // Aplicar efecto de karma
         if (choice.karmaEffect != 0)
         {
@@ -180,6 +180,27 @@ public class InteractionManager : MonoBehaviour
             Invoke("EndInteraction", 0.1f);
         }
     }
+    
+    /// <summary>
+/// Muestra un texto simple sin necesidad de crear un ScriptableObject
+/// </summary>
+    public void ShowSimpleText(string speakerName, string text)
+    {
+        Conversation tempConvo = ScriptableObject.CreateInstance<Conversation>();
+        tempConvo.lines = new DialogueLine[]
+        {
+            new DialogueLine
+            {
+                speakerName = speakerName,
+                sentence = text
+            }
+        };
+
+        choiceInputCooldown = CHOICE_INPUT_COOLDOWN_TIME;
+
+        StartInteraction(tempConvo);
+        Debug.Log($"✅ ShowSimpleText llamado: {speakerName} - {text.Substring(0, Mathf.Min(50, text.Length))}...");
+    }
 
     public void EndInteraction()
     {
@@ -197,6 +218,20 @@ public class InteractionManager : MonoBehaviour
             choiceInputCooldown -= Time.deltaTime;
         }
         
+        if (dialoguePanel.activeSelf && currentChoiceButtons.Count == 0)
+        {
+            // Solo procesar input si el cooldown ha terminado
+            if (choiceInputCooldown <= 0f)
+            {
+                bool interactPressed = Input.GetKeyDown(KeyCode.E);
+                
+                if (interactPressed)
+                {
+                    Debug.Log("<color=cyan>🔑 E presionada - Cerrando diálogo</color>");
+                    EndInteraction();
+                }
+            }
+        }
         if (currentChoiceButtons.Count > 0)
         {
             // Don't process choice input if we're on cooldown
@@ -204,6 +239,8 @@ public class InteractionManager : MonoBehaviour
             {
                 return;
             }
+            
+        
             
             // Check Choice 1 input using InputActionReference if available, fallback to legacy input
             bool choice1Pressed = false;

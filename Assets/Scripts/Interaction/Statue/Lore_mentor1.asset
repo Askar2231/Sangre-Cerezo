@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 77cea403e904a36469ce57fa3d1b92b0, type: 3}
-  m_Name: Lore_Mentor
+  m_Name: Lore_mentor1
   m_EditorClassIdentifier: 
   statueName: Estatua del Mentor
-  loreText: Maestro... me arrancaste de la muerte, pero no me advertiste del precio.
-    Esta cicatriz ya no es una herida; es una voz. Y temo que estoy empezando a entender
-    lo que susurra.
+  loreText: "Me ense\xF1aste que la espada es disciplina. Pero en mis manos, se ha
+    vuelto un pincel ba\xF1ado en sangre. \xBFCu\xE1ntas vidas manchadas justifican
+    un honor perdido?"
   narratorVoice: {fileID: 0}
   statueIcon: {fileID: 0}

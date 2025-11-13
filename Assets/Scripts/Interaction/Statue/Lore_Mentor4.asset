@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 77cea403e904a36469ce57fa3d1b92b0, type: 3}
-  m_Name: Lore_Mentor
+  m_Name: Lore_Mentor4
   m_EditorClassIdentifier: 
   statueName: Estatua del Mentor
-  loreText: Maestro... me arrancaste de la muerte, pero no me advertiste del precio.
-    Esta cicatriz ya no es una herida; es una voz. Y temo que estoy empezando a entender
-    lo que susurra.
+  loreText: "Estoy cerca del final. Pronto enfrentar\xE9 a los que quebraron el mundo.
+    Ya no s\xE9 si busco vengar a mi familia... o proteger lo poco que queda de la
+    tuya."
   narratorVoice: {fileID: 0}
   statueIcon: {fileID: 0}
