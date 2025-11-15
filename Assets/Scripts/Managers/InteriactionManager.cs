@@ -15,6 +15,7 @@ public class InteractionManager : MonoBehaviour
     public TextMeshProUGUI sentenceText;
     public GameObject choicesContainer;
     public GameObject choiceButtonPrefab;
+    public GameObject fondo;
 
     [Header("Input Actions")]
     [Tooltip("Input action for Choice 1 (drag from Input Actions asset) !! Will not update text/icons dynamically !!")]
@@ -39,10 +40,19 @@ public class InteractionManager : MonoBehaviour
         sentences = new Queue<string>();
         currentChoiceButtons = new List<Button>();
         dialoguePanel.SetActive(false);
+         if (fondo != null)
+        {
+            fondo.SetActive(false);
+        }
     }
 
     public void StartInteraction(ScriptableObject data)
     {
+        if (fondo != null)
+        {
+            fondo.SetActive(true);
+        }
+
         dialoguePanel.SetActive(true);
 
         if (data is Conversation conversation)
@@ -205,8 +215,18 @@ public class InteractionManager : MonoBehaviour
     public void EndInteraction()
     {
         Debug.Log("<color=yellow>Llamando a EndInteraction...</color>");
+        if (fondo != null)
+        {
+            fondo.SetActive(false);
+        }
+
         dialoguePanel.SetActive(false);
         currentChoiceButtons.Clear();
+        InteractableStatue[] statues = FindObjectsOfType<InteractableStatue>();
+        foreach (var statue in statues)
+        {
+            statue.OnDialogClosed();
+        }
         Debug.Log("Interacción finalizada.");
     }
 

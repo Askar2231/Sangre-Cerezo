@@ -1,9 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
 
 /// <summary>
 /// Estatua interactiva que muestra lore usando el sistema de diálogos existente
-/// VERSION CON DEBUG COMPLETO
+/// VERSION SIN PARPADEO Y CON MÚLTIPLES INTERACCIONES
 /// </summary>
 public class InteractableStatue : MonoBehaviour
 {
@@ -12,32 +13,26 @@ public class InteractableStatue : MonoBehaviour
     
     [Header("Interaction Settings")]
     [SerializeField] private float interactionRange = 3f;
-    
-
+    [SerializeField] private float exitRange = 3.5f;
+    [SerializeField] private bool allowMultipleInteractions = true; // ← NUEVO: Permitir varias interacciones
     
     [Header("Visual Feedback")]
     [SerializeField] private GameObject interactionPrompt;
+    [SerializeField] private TextMeshProUGUI promptText;
     
     [Header("DEBUG")]
     [SerializeField] private bool showDebugLogs = true;
     
     private Transform playerTransform;
     private bool playerInRange = false;
-    private SimpleDialogPresenter dialogPresenter;
     private bool isShowingDialog = false;
     private int updateCount = 0;
-     private bool hasInteracted = false;
+    private bool hasInteractedThisSession = false; // ← Cambiado el nombre para claridad
+    private bool promptCurrentlyActive = false; // ← NUEVO: Controlar estado del prompt
 
     private void Start()
     {
         if (showDebugLogs) Debug.Log("🗿 === STATUE START ===");
-        
-        // Buscar el dialog presenter
-        dialogPresenter = FindObjectOfType<SimpleDialogPresenter>();
-        if (showDebugLogs) 
-        {
-            Debug.Log($"🗿 Dialog Presenter encontrado: {dialogPresenter != null}");
-        }
         
         // Verificar lore data
         if (showDebugLogs)
@@ -53,7 +48,14 @@ public class InteractableStatue : MonoBehaviour
         if (interactionPrompt != null)
         {
             interactionPrompt.SetActive(false);
+            promptCurrentlyActive = false;
             if (showDebugLogs) Debug.Log("🗿 Interaction Prompt desactivado");
+            
+            // Buscar el TextMeshProUGUI si no está asignado
+            if (promptText == null)
+            {
+                promptText = interactionPrompt.GetComponentInChildren<TextMeshProUGUI>();
+            }
         }
         else
         {
@@ -79,7 +81,7 @@ public class InteractableStatue : MonoBehaviour
         updateCount++;
         if (showDebugLogs && updateCount % 60 == 0)
         {
-            Debug.Log($"🔄 Update #{updateCount} - Player in range: {playerInRange}");
+            Debug.Log($"🔄 Update #{updateCount} - Player in range: {playerInRange} - Prompt active: {promptCurrentlyActive} - Showing dialog: {isShowingDialog}");
         }
         
         if (playerTransform == null)
@@ -91,22 +93,31 @@ public class InteractableStatue : MonoBehaviour
             return;
         }
         
-        if (isShowingDialog) return;
-        
         float distance = Vector3.Distance(transform.position, playerTransform.position);
         
-        // Log de distancia cada 60 frames
-        if (showDebugLogs && updateCount % 60 == 0)
+        // Usar hysteresis para evitar parpadeo
+        if (!playerInRange)
         {
-            Debug.Log($"📏 Distancia al jugador: {distance:F2} / Rango: {interactionRange}");
-        }
-        
-        if (distance <= interactionRange)
-        {
-            if (!playerInRange)
+            // Si NO está en rango, usar el rango de entrada (más pequeño)
+            if (distance <= interactionRange)
             {
                 OnPlayerEnterRange();
             }
+        }
+        else
+        {
+            // Si YA está en rango, usar el rango de salida (más grande)
+            if (distance > exitRange)
+            {
+                OnPlayerExitRange();
+            }
+        }
+        
+        // Solo procesar input si el jugador está en rango Y no está mostrando diálogo
+        if (playerInRange && !isShowingDialog)
+        {
+            // Asegurarse de que el prompt esté visible
+            ShowPrompt();
             
             // DETECTAR INPUT - KEYBOARD
             if (Keyboard.current != null)
@@ -115,13 +126,6 @@ public class InteractableStatue : MonoBehaviour
                 {
                     if (showDebugLogs) Debug.Log("🔑 === E KEY DETECTADA ===");
                     InteractWithStatue();
-                }
-            }
-            else
-            {
-                if (showDebugLogs && updateCount == 1)
-                {
-                    Debug.LogWarning("⚠️ Keyboard.current es NULL");
                 }
             }
             
@@ -135,17 +139,12 @@ public class InteractableStatue : MonoBehaviour
                 }
             }
         }
-        else
-        {
-            if (playerInRange)
-            {
-                OnPlayerExitRange();
-            }
-        }
     }
 
     private void OnPlayerEnterRange()
     {
+        if (playerInRange) return; // Ya está en rango, no hacer nada
+        
         playerInRange = true;
         
         if (showDebugLogs) 
@@ -153,66 +152,148 @@ public class InteractableStatue : MonoBehaviour
             Debug.Log($"✅ === JUGADOR ENTRÓ EN RANGO === Estatua: {loreData?.statueName ?? "sin nombre"}");
         }
         
-        if (interactionPrompt != null)
+        // Mostrar el prompt solo si no está mostrando diálogo
+        if (!isShowingDialog)
         {
-            interactionPrompt.SetActive(true);
-            if (showDebugLogs) Debug.Log("👁️ Prompt activado");
+            ShowPrompt();
         }
     }
 
     private void OnPlayerExitRange()
     {
+        if (!playerInRange) return; // Ya está fuera de rango, no hacer nada
+        
         playerInRange = false;
         
         if (showDebugLogs) Debug.Log("❌ Jugador salió de rango");
         
-        if (interactionPrompt != null)
+        HidePrompt();
+    }
+
+    /// <summary>
+    /// Muestra el prompt solo si no está ya visible
+    /// </summary>
+    private void ShowPrompt()
+    {
+        if (interactionPrompt == null) return;
+        
+        // Solo activar si no está ya activo (evita parpadeo)
+        if (!promptCurrentlyActive)
+        {
+            UpdatePromptText();
+            interactionPrompt.SetActive(true);
+            promptCurrentlyActive = true;
+            if (showDebugLogs) Debug.Log("👁️ Prompt mostrado");
+        }
+    }
+
+    /// <summary>
+    /// Oculta el prompt solo si está visible
+    /// </summary>
+    private void HidePrompt()
+    {
+        if (interactionPrompt == null) return;
+        
+        // Solo desactivar si está activo (evita llamadas innecesarias)
+        if (promptCurrentlyActive)
         {
             interactionPrompt.SetActive(false);
+            promptCurrentlyActive = false;
+            if (showDebugLogs) Debug.Log("🚫 Prompt ocultado");
+        }
+    }
+
+    /// <summary>
+    /// Actualiza el texto del prompt con el botón correcto según el dispositivo actual
+    /// </summary>
+    private void UpdatePromptText()
+    {
+        if (promptText == null) return;
+        
+        string buttonIcon = GetInteractionButtonText();
+        promptText.text = $"{buttonIcon} Interactuar";
+    }
+
+    /// <summary>
+    /// Obtiene el texto/icono del botón de interacción según el dispositivo actual
+    /// </summary>
+    private string GetInteractionButtonText()
+    {
+        // Intentar usar InputIconMapper si está disponible
+        if (InputIconMapper.Instance != null)
+        {
+            return InputIconMapper.Instance.GetSpriteOrText(InputAction.Interact);
+        }
+        
+        // Fallback: detectar manualmente
+        if (Gamepad.current != null)
+        {
+            return "[X]"; // Botón X en Xbox (buttonWest)
+        }
+        else
+        {
+            return "[E]";
         }
     }
 
     void InteractWithStatue()
-{
-    Debug.Log("🗿 === INTERACT WITH STATUE LLAMADO ===");
-
-    if (loreData == null)
     {
-        Debug.LogError("❌ No hay Lore Data asignado en la estatua!");
-        return;
+        Debug.Log("🗿 === INTERACT WITH STATUE LLAMADO ===");
+
+        if (loreData == null)
+        {
+            Debug.LogError("❌ No hay Lore Data asignado en la estatua!");
+            return;
+        }
+
+        // Verificar si ya interactuó y no se permiten múltiples interacciones
+        if (!allowMultipleInteractions && hasInteractedThisSession)
+        {
+            Debug.Log("⚠️ Ya interactuaste con esta estatua (múltiples interacciones deshabilitadas)");
+            return;
+        }
+
+        hasInteractedThisSession = true;
+
+        Debug.Log($"🗿 Mostrando diálogo de: {loreData.statueName}");
+        Debug.Log($"📝 Texto: {loreData.loreText}");
+
+        // Ocultar el prompt mientras se muestra el diálogo
+        HidePrompt();
+        
+        isShowingDialog = true;
+
+        if (InteractionManager.Instance != null)
+        {
+            InteractionManager.Instance.ShowSimpleText(loreData.statueName, loreData.loreText);
+            Debug.Log("✅ ShowSimpleText llamado");
+        }
+        else
+        {
+            Debug.LogError("❌ InteractionManager.Instance es null!");
+            isShowingDialog = false; // Resetear si falla
+        }
     }
 
-    if (hasInteracted)
+    /// <summary>
+    /// Llamar este método cuando el InteractionManager cierre el diálogo
+    /// </summary>
+    public void OnDialogClosed()
     {
-        Debug.Log("⚠️ Ya interactuaste con esta estatua");
-        return;
-    }
-
-    hasInteracted = true;
-
-    Debug.Log($"🗿 Mostrando diálogo de: {loreData.statueName}");
-    Debug.Log($"📝 Texto: {loreData.loreText}");
-
-    if (InteractionManager.Instance != null)
-    {
-        InteractionManager.Instance.ShowSimpleText(loreData.statueName, loreData.loreText);
-        Debug.Log("✅ ShowSimpleText llamado");
-    }
-    else
-    {
-        Debug.LogError("❌ InteractionManager.Instance es null!");
-    }
-}
-
-    private void OnDialogClosed()
-    {
-        if (showDebugLogs) Debug.Log("🚪 Diálogo cerrado");
+        if (showDebugLogs) Debug.Log("🚪 Diálogo cerrado - Reseteando estado");
         
         isShowingDialog = false;
         
-        if (playerInRange && interactionPrompt != null)
+        // Si se permiten múltiples interacciones, resetear el flag
+        if (allowMultipleInteractions)
         {
-            interactionPrompt.SetActive(true);
+            hasInteractedThisSession = false;
+        }
+        
+        // Si el jugador sigue en rango, volver a mostrar el prompt
+        if (playerInRange)
+        {
+            ShowPrompt();
         }
     }
 
@@ -220,6 +301,10 @@ public class InteractableStatue : MonoBehaviour
     {
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, interactionRange);
+        
+        // Mostrar también el rango de salida
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, exitRange);
     }
     
     // MÉTODO PÚBLICO PARA LLAMAR DESDE OTRO SCRIPT
@@ -227,13 +312,13 @@ public class InteractableStatue : MonoBehaviour
     {
         if (showDebugLogs) Debug.Log("🎯 TriggerInteraction llamado desde script externo");
         
-        if (playerInRange)
+        if (playerInRange && !isShowingDialog)
         {
             InteractWithStatue();
         }
         else
         {
-            Debug.LogWarning("⚠️ TriggerInteraction llamado pero jugador no está en rango");
+            Debug.LogWarning("⚠️ TriggerInteraction: jugador no está en rango o ya hay diálogo activo");
         }
     }
 }
