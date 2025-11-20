@@ -47,9 +47,10 @@ public class StaminaOrbsUI : MonoBehaviour
         // Clear existing orbs
         ClearOrbs();
 
-        // Calculate how many orbs we need
+        // Calculate how many orbs we need (máximo 3)
         int orbCount = Mathf.CeilToInt(maxStamina / staminaPerOrb);
-        
+        orbCount = Mathf.Min(orbCount, 3); // Limitar a máximo 3 orbes
+
         // Spawn orbs
         SpawnOrbs(orbCount);
 
@@ -190,21 +191,49 @@ public class StaminaOrbsUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Clear all spawned orbs
+    /// Clear the last 3 spawned orbs (if hay más de 3, elimina los últimos 3; si hay 3 o menos, elimina todos)
     /// </summary>
     private void ClearOrbs()
     {
-        foreach (Image orb in spawnedOrbs)
+        int count = spawnedOrbs.Count;
+
+        // Si hay más de 3 orbes, elimina solo los últimos 3
+        if (count > 3)
         {
-            if (orb != null && orb.gameObject != null)
+            for (int i = count - 1; i >= count - 3; i--)
             {
-                Destroy(orb.gameObject);
+                if (spawnedOrbs[i] != null && spawnedOrbs[i].gameObject != null)
+                {
+                    Destroy(spawnedOrbs[i].gameObject);
+                }
+                spawnedOrbs.RemoveAt(i);
+                targetFillAmounts.RemoveAt(i);
+                currentFillAmounts.RemoveAt(i);
             }
         }
+        else
+        {
+            // Si hay 3 o menos, elimina todos
+            foreach (Image orb in spawnedOrbs)
+            {
+                if (orb != null && orb.gameObject != null)
+                {
+                    Destroy(orb.gameObject);
+                }
+            }
+            spawnedOrbs.Clear();
+            targetFillAmounts.Clear();
+            currentFillAmounts.Clear();
+        }
 
-        spawnedOrbs.Clear();
-        targetFillAmounts.Clear();
-        currentFillAmounts.Clear();
+        // También limpiar hijos huérfanos en el container (por si acaso)
+        if (orbContainer != null)
+        {
+            foreach (Transform child in orbContainer)
+            {
+                Destroy(child.gameObject);
+            }
+        }
     }
 
     /// <summary>

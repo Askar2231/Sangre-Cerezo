@@ -81,7 +81,7 @@ public class InteractableStatue : MonoBehaviour
         updateCount++;
         if (showDebugLogs && updateCount % 60 == 0)
         {
-            Debug.Log($"🔄 Update #{updateCount} - Player in range: {playerInRange} - Prompt active: {promptCurrentlyActive} - Showing dialog: {isShowingDialog}");
+         
         }
         
         if (playerTransform == null)

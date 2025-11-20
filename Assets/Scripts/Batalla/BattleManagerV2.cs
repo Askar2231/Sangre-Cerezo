@@ -53,6 +53,8 @@ public class BattleManagerV2 : MonoBehaviour
     // Position tracking
     private Vector3 playerOriginalPosition;
     private Quaternion playerOriginalRotation;
+    private Vector3 enemyOriginalPosition;         // NUEVO: Guarda posición original del enemigo
+    private Quaternion enemyOriginalRotation;      // NUEVO: Guarda rotación original del enemigo
     private bool isTransitioningPositions = false;
     
     // Damage tracking for notifications
@@ -81,6 +83,10 @@ public class BattleManagerV2 : MonoBehaviour
     
     [Header("Boss System")]
     private BossBattleController bossController; // Detected automatically if enemy has boss component
+
+    private Transform persistentEnemyTransform; // NUEVO: Referencia persistente al transform del enemigo
+    private Vector3 persistentEnemyOriginalPosition;
+    private Quaternion persistentEnemyOriginalRotation;
 
     private void Awake()
     {
@@ -345,6 +351,31 @@ public class BattleManagerV2 : MonoBehaviour
         // ASIGNAR el enemigo específico que activó el trigger
         enemyController = specificEnemy;
         Debug.Log($"<color=cyan>Battle started with specific enemy: {enemyController.name}</color>");
+
+        // GUARDAR REFERENCIA PERSISTENTE Y POSICIÓN ORIGINAL
+        if (enemyController.Character != null)
+        {
+            persistentEnemyTransform = enemyController.Character.transform;
+            persistentEnemyOriginalPosition = persistentEnemyTransform.position;
+            persistentEnemyOriginalRotation = persistentEnemyTransform.rotation;
+            Debug.Log($"[BattleManagerV2] Persistent enemy position saved: {persistentEnemyOriginalPosition} | rotation: {persistentEnemyOriginalRotation.eulerAngles}");
+        }
+        else
+        {
+            Debug.LogWarning("[BattleManagerV2] EnemyController.Character is null when trying to save persistent position!");
+        }
+
+        // GUARDAR POSICIÓN ORIGINAL DEL ENEMIGO AQUÍ (antes de moverlo)
+        if (enemyController.Character != null)
+        {
+            enemyOriginalPosition = enemyController.Character.transform.position;
+            enemyOriginalRotation = enemyController.Character.transform.rotation;
+            Debug.Log($"[BattleManagerV2] Enemy original position saved: {enemyOriginalPosition} | rotation: {enemyOriginalRotation.eulerAngles}");
+        }
+        else
+        {
+            Debug.LogWarning("[BattleManagerV2] EnemyController.Character is null when trying to save original position!");
+        }
 
         // FORZAR reset del resultado de batalla
         battleResult = BattleResult.None;
@@ -887,7 +918,7 @@ public class BattleManagerV2 : MonoBehaviour
         if (!playerController.Character.IsAlive)
         {
             Debug.Log("⚔️ <color=red>Player is dead, not ending turn</color>");
-            return; // Death handler will end battle
+            return; // Death handler will trigger
         }
 
         // Delay antes de terminar el turno enemigo
@@ -997,7 +1028,7 @@ public class BattleManagerV2 : MonoBehaviour
         if (CameraFadeController.Instance != null)
         {
             yield return CameraFadeController.Instance.FadeOutAndIn(
-                actionDuringFade: () => ReturnPlayerToOriginalPositionInstantly(),
+                actionDuringFade: () => ReturnCharactersToOriginalPositionsInstantly(), // CAMBIO AQUÍ
                 fadeOutDuration: fadeOutDuration * 0.8f, // Slightly faster on exit
                 fadeInDuration: fadeInDuration,
                 holdDuration: fadeHoldDuration * 0.5f
@@ -1005,7 +1036,7 @@ public class BattleManagerV2 : MonoBehaviour
         }
         else
         {
-            ReturnPlayerToOriginalPositionInstantly();
+            ReturnCharactersToOriginalPositionsInstantly(); // CAMBIO AQUÍ
             yield return null;
         }
         
@@ -1017,17 +1048,24 @@ public class BattleManagerV2 : MonoBehaviour
     }
     
     /// <summary>
-    /// Instantly return player to original position (called during fade)
+    /// Instantly return player and enemy to their original positions (called during fade)
     /// </summary>
-    private void ReturnPlayerToOriginalPositionInstantly()
+    private void ReturnCharactersToOriginalPositionsInstantly()
     {
+        // Player
         if (playerController?.Character?.gameObject != null)
         {
             Transform playerTransform = playerController.Character.transform;
             playerTransform.position = playerOriginalPosition;
             playerTransform.rotation = playerOriginalRotation;
-            
-            Debug.Log("Player returned to original position (instant)");
+            Debug.Log($"Player returned to original position (instant): {playerOriginalPosition} | rotation: {playerOriginalRotation.eulerAngles}");
+        }
+        // Enemigo (usar referencia persistente)
+        if (persistentEnemyTransform != null)
+        {
+            persistentEnemyTransform.position = persistentEnemyOriginalPosition;
+            persistentEnemyTransform.rotation = persistentEnemyOriginalRotation;
+            Debug.Log($"[BattleManagerV2] Persistent enemy returned to original position (instant): {persistentEnemyOriginalPosition} | rotation: {persistentEnemyOriginalRotation.eulerAngles}");
         }
     }
 
@@ -1236,11 +1274,17 @@ public class BattleManagerV2 : MonoBehaviour
         
         isTransitioningPositions = true;
         
-        // Save original positions
+        // Guardar posición y rotación originales del jugador
         if (playerController?.Character?.gameObject != null)
         {
             playerOriginalPosition = playerController.Character.transform.position;
             playerOriginalRotation = playerController.Character.transform.rotation;
+        }
+        // Guardar posición y rotación originales del enemigo
+        if (enemyController?.Character?.gameObject != null)
+        {
+            enemyOriginalPosition = enemyController.Character.transform.position;
+            enemyOriginalRotation = enemyController.Character.transform.rotation;
         }
         
         Debug.Log("<color=cyan>Starting camera fade transition to combat positions</color>");
