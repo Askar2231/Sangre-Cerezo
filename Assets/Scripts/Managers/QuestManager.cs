@@ -408,8 +408,10 @@ public class QuestManager : MonoBehaviour
             // NUEVO: Ejecutar animación de muerte
             ExecuteThiefDeath();
             
-            UpdateQuestState(RobberyQuestState.ReturnToMerchant);
-            Debug.Log("Ladrón eliminado. Vuelve con el Mercader.");
+            // After killing thief, still enable boss encounter
+            Debug.Log("<color=cyan>Ladrón eliminado. Ahora debes encontrar al jefe de los ladrones...</color>");
+            EnableBossEnemy();
+            UpdateQuestState(RobberyQuestState.FindBoss);
         }
     }
 

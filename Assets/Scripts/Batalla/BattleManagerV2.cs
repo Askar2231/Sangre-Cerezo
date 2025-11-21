@@ -853,7 +853,7 @@ public class BattleManagerV2 : MonoBehaviour
             
             // Start the attack sequence with a safety timeout
             bool attackCompleted = false;
-            float timeout = 6f; // 15 second timeout
+            float timeout = 5f; // 5 second timeout
             float elapsed = 0f;
             
             Coroutine attackCoroutine = StartCoroutine(ExecuteBossAttackSequenceWithFlag(chosenAttack, () => attackCompleted = true));

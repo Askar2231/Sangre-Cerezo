@@ -117,8 +117,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   healthBarUI: {fileID: 4195899926344610446}
   worldCanvas: {fileID: 7664622005282656120}
-  offset: {x: 0, y: 2, z: 0}
+  offset: {x: 0, y: 5, z: 0}
   followSmoothSpeed: 10
+  additionalHeightOffset: 0.5
   billboardBlend: 0.7
   lockYRotation: 1
 --- !u!1001 &3572593009110329355
@@ -164,18 +165,6 @@ PrefabInstance:
     - target: {fileID: 6723033954893572934, guid: c0d5e4c2943f3554fac0eb7de4e7f3f8, type: 3}
       propertyPath: m_SizeDelta.y
       value: 362.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6723033954893572934, guid: c0d5e4c2943f3554fac0eb7de4e7f3f8, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1.1761881
-      objectReference: {fileID: 0}
-    - target: {fileID: 6723033954893572934, guid: c0d5e4c2943f3554fac0eb7de4e7f3f8, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.24576035
-      objectReference: {fileID: 0}
-    - target: {fileID: 6723033954893572934, guid: c0d5e4c2943f3554fac0eb7de4e7f3f8, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1.4331
       objectReference: {fileID: 0}
     - target: {fileID: 6723033954893572934, guid: c0d5e4c2943f3554fac0eb7de4e7f3f8, type: 3}
       propertyPath: m_LocalPosition.x

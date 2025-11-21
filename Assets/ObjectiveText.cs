@@ -44,20 +44,8 @@ public class ObjectiveText : MonoBehaviour
 
     private void UpdateObjectiveFromRobberyQuest(RobberyQuestState state)
     {
-        // Hide objective text during combat
-        if (state == RobberyQuestState.CombatActive || state == RobberyQuestState.BossCombatActive)
-        {
-            objectiveText.gameObject.SetActive(false);
-            Debug.Log("<color=yellow>Objective text hidden during combat</color>");
-            return;
-        }
-        
-        // Show objective text for non-combat states
-        if (!objectiveText.gameObject.activeSelf)
-        {
-            objectiveText.gameObject.SetActive(true);
-            Debug.Log("<color=green>Objective text shown</color>");
-        }
+        // Note: Combat UI visibility is managed by BattleCombatUIController
+        // Don't auto-hide objective text here - just update the text content
         
         switch (state)
         {
@@ -65,25 +53,31 @@ public class ObjectiveText : MonoBehaviour
                 UpdateObjectiveFallback();
                 break;
             case RobberyQuestState.DialogueIntro:
-                objectiveText.text = "Habla con el mercader.";
+                objectiveText.text = "Habla con el mercader";
+                break;
+            case RobberyQuestState.CombatActive:
+                objectiveText.text = "Derrota al ladrón";
                 break;
             case RobberyQuestState.PostCombatDecision:
-                objectiveText.text = "Decide el destino del ladrón.";
+                objectiveText.text = "Decide el destino del ladrón";
                 break;
             case RobberyQuestState.FindBoss:
-                objectiveText.text = "Encuentra al jefe de los ladrones.";
+                objectiveText.text = "Encuentra al jefe de los ladrones";
+                break;
+            case RobberyQuestState.BossCombatActive:
+                objectiveText.text = "Derrota al jefe";
                 break;
             case RobberyQuestState.PostBossDecision:
-                objectiveText.text = "Decide el destino del jefe.";
+                objectiveText.text = "Decide el destino del jefe";
                 break;
             case RobberyQuestState.ReturnToMerchant:
-                objectiveText.text = "Regresa con el mercader.";
+                objectiveText.text = "Regresa con el mercader";
                 break;
             case RobberyQuestState.Completed:
                 objectiveText.text = "¡Misión completada!";
                 break;
             case RobberyQuestState.TalkToFirstNPC:
-                objectiveText.text = "Habla con el primer NPC.";
+                objectiveText.text = "Habla con el primer NPC";
                 break;
             default:
                 UpdateObjectiveFallback();
@@ -97,11 +91,11 @@ public class ObjectiveText : MonoBehaviour
 
         if (sceneName == "Exterior")
         {
-            objectiveText.text = "Busca al mercader.";
+            objectiveText.text = "Busca al mercader";
         }
         else
         {
-            objectiveText.text = "Sal de la casa.";
+            objectiveText.text = "Objetivo: Sal de la casa";
         }
     }
 

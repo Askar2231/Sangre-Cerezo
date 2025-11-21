@@ -120,6 +120,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5091148156808933641, guid: d39606aeee359e840b1399f3d53afdf9, type: 3}
+      propertyPath: m_PresetInfoIsWorld
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8251095909416829619, guid: d39606aeee359e840b1399f3d53afdf9, type: 3}
       propertyPath: m_Name
       value: EnemyUI_Worldspace_Canvas

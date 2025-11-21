@@ -12,7 +12,7 @@ public class BattleCombatUIController : MonoBehaviour
     [SerializeField] private StaminaOrbsUI playerStaminaOrbs;
 
     [Header("Enemy UI (Worldspace)")]
-    [SerializeField] private GameObject enemyHealthBarPrefab;
+    [SerializeField] private GameObject enemyHealthBarCanvasPrefab;
     [SerializeField] private Transform worldspaceUIParent;
 
     [Header("Settings")]
@@ -129,6 +129,18 @@ public class BattleCombatUIController : MonoBehaviour
             return;
         }
 
+        if (playerTransform == null)
+        {
+            Debug.LogError("[BattleCombatUIController] Cannot setup enemy UI - playerTransform is null!");
+            return;
+        }
+
+        if (battleCamera == null)
+        {
+            Debug.LogError("[BattleCombatUIController] Cannot setup enemy UI - battleCamera is null! Make sure Initialize() was called first with a valid camera.");
+            return;
+        }
+
         // Cleanup previous enemy UI
         CleanupEnemyUI();
 
@@ -136,7 +148,7 @@ public class BattleCombatUIController : MonoBehaviour
         currentEnemyTransform = enemyTransform;
 
         // Spawn enemy health bar in worldspace
-        if (enemyHealthBarPrefab != null)
+        if (enemyHealthBarCanvasPrefab != null)
         {
             Debug.Log($"[BattleCombatUIController] Spawning enemy health bar for {enemy.name} at position {enemyTransform.position}");
             
@@ -146,42 +158,61 @@ public class BattleCombatUIController : MonoBehaviour
             Vector3 spawnPosition = enemyTransform.position;
             Quaternion spawnRotation = Quaternion.identity;
             
-            GameObject healthBarObject = Instantiate(enemyHealthBarPrefab, spawnPosition, spawnRotation, parent);
+            GameObject healthBarObject = Instantiate(enemyHealthBarCanvasPrefab, spawnPosition, spawnRotation, parent);
+            healthBarObject.SetActive(true); // Ensure it's active
             
             Debug.Log($"[BattleCombatUIController] Health bar instantiated at {healthBarObject.transform.position}");
+            Debug.Log($"[BattleCombatUIController] Health bar prefab name: {healthBarObject.name}, Active: {healthBarObject.activeSelf}");
             
-            // Look for Canvas component first (the WorldspaceHealthBar should be on the Canvas GameObject)
-            Canvas worldspaceCanvas = healthBarObject.GetComponentInChildren<Canvas>();
+            // The prefab should be a Canvas with WorldspaceHealthBar component on it
+            // Try to get the component directly from the root object first
+            currentEnemyHealthBar = healthBarObject.GetComponent<WorldspaceHealthBar>();
             
-            if (worldspaceCanvas != null)
+            if (currentEnemyHealthBar == null)
             {
-                Debug.Log($"[BattleCombatUIController] Canvas found on: {worldspaceCanvas.gameObject.name}");
+                // If not on root, try to find it in children
+                currentEnemyHealthBar = healthBarObject.GetComponentInChildren<WorldspaceHealthBar>();
+            }
+            
+            if (currentEnemyHealthBar != null)
+            {
+                Debug.Log($"[BattleCombatUIController] WorldspaceHealthBar component found on: {currentEnemyHealthBar.gameObject.name}");
                 
-                // Get WorldspaceHealthBar component from the Canvas GameObject
-                currentEnemyHealthBar = worldspaceCanvas.GetComponent<WorldspaceHealthBar>();
-                
-                if (currentEnemyHealthBar != null)
+                // Verify Canvas setup
+                Canvas canvas = currentEnemyHealthBar.GetComponent<Canvas>();
+                if (canvas != null)
                 {
-                    Debug.Log($"[BattleCombatUIController] WorldspaceHealthBar component found on Canvas: {currentEnemyHealthBar.gameObject.name}");
-                    Debug.Log($"[BattleCombatUIController] Initializing WorldspaceHealthBar component...");
-                    currentEnemyHealthBar.Initialize(
-                        enemy, 
-                        enemyTransform, 
-                        playerTransform, 
-                        battleCamera
-                    );
-                    currentEnemyHealthBar.Show();
-                    Debug.Log($"[BattleCombatUIController] Enemy health bar setup complete. Position: {currentEnemyHealthBar.transform.position}");
+                    Debug.Log($"[BattleCombatUIController] Canvas render mode: {canvas.renderMode}");
+                    if (canvas.renderMode != RenderMode.WorldSpace)
+                    {
+                        Debug.LogWarning($"[BattleCombatUIController] Canvas is not in WorldSpace mode! Current mode: {canvas.renderMode}");
+                    }
                 }
                 else
                 {
-                    Debug.LogError($"[BattleCombatUIController] Canvas found but missing WorldspaceHealthBar component! Add WorldspaceHealthBar to {worldspaceCanvas.gameObject.name}");
-                    Destroy(healthBarObject);
+                    Debug.LogWarning($"[BattleCombatUIController] WorldspaceHealthBar found but no Canvas component on same GameObject!");
                 }
+                
+                Debug.Log($"[BattleCombatUIController] About to initialize WorldspaceHealthBar:");
+                Debug.Log($"  - Enemy: {(enemy != null ? enemy.name : "NULL")}");
+                Debug.Log($"  - Enemy Transform: {(enemyTransform != null ? enemyTransform.name : "NULL")} at position {enemyTransform?.position}");
+                Debug.Log($"  - Player Transform: {(playerTransform != null ? playerTransform.name : "NULL")} at position {playerTransform?.position}");
+                Debug.Log($"  - Battle Camera: {(battleCamera != null ? battleCamera.name : "NULL")}");
+                
+                currentEnemyHealthBar.Initialize(
+                    enemy, 
+                    enemyTransform, 
+                    playerTransform, 
+                    battleCamera
+                );
+                currentEnemyHealthBar.Show();
+                Debug.Log($"[BattleCombatUIController] Enemy health bar setup complete. Position: {currentEnemyHealthBar.transform.position}, Active: {currentEnemyHealthBar.gameObject.activeSelf}");
             }
             else
             {
-                Debug.LogError($"[BattleCombatUIController] No Canvas component found in prefab {healthBarObject.name}! The prefab must contain a Canvas with WorldspaceHealthBar component.");
+                Debug.LogError($"[BattleCombatUIController] WorldspaceHealthBar component not found on prefab '{healthBarObject.name}' or its children!");
+                Debug.LogError($"[BattleCombatUIController] Make sure the prefab has WorldspaceHealthBar component attached.");
+                Debug.LogError($"[BattleCombatUIController] Prefab structure should be: Canvas (root) with WorldspaceHealthBar component + HealthBarUI child");
                 Destroy(healthBarObject);
             }
         }
@@ -207,9 +238,10 @@ public class BattleCombatUIController : MonoBehaviour
             currentEnemy.OnDamageTaken -= OnEnemyHealthChanged;
         }
 
-        // Destroy enemy health bar
+        // Destroy enemy health bar GameObject
         if (currentEnemyHealthBar != null)
         {
+            Debug.Log($"[BattleCombatUIController] Destroying enemy health bar: {currentEnemyHealthBar.gameObject.name}");
             Destroy(currentEnemyHealthBar.gameObject);
             currentEnemyHealthBar = null;
         }
