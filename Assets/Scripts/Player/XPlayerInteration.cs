@@ -8,7 +8,7 @@ public class XPlayerInteraction : MonoBehaviour
     [SerializeField] private float interactionRadius = 10f;
     
     [Header("UI")]
-    [SerializeField] private GameObject interactionPrompt;
+    [SerializeField] private GameObject interactionPrompt; // ← Este es el prompt de los NPCs
     [SerializeField] private TextMeshProUGUI promptText;
     
     [Header("Input")]
@@ -17,7 +17,7 @@ public class XPlayerInteraction : MonoBehaviour
     private NPCInteraction currentNPC;
     private bool isUsingGamepad = false;
     private float interactionCooldown = 0f;
-    private const float INTERACTION_COOLDOWN_TIME = 0.5f; // Prevent multiple triggers
+    private const float INTERACTION_COOLDOWN_TIME = 0.5f;
     
     private void OnEnable()
     {
@@ -69,57 +69,61 @@ public class XPlayerInteraction : MonoBehaviour
     
     private void UpdatePrompt()
     {
+        if (interactionPrompt == null) return;
+        
         if (currentNPC != null)
         {
-            // Mostrar prompt
-            if (interactionPrompt != null)
+            // Hay NPC cerca: Mostrar prompt
+            if (!interactionPrompt.activeSelf)
             {
                 interactionPrompt.SetActive(true);
-                
-                // Use InputIconMapper for dynamic button display
-                if (promptText != null)
-                {
-                    if (InputIconMapper.Instance != null)
-                    {
-                        // Use InputIconMapper to get device-specific button icon/text
-                        string iconText = InputIconMapper.Instance.GetSpriteOrText(InputAction.Interact);
-                        promptText.text = iconText + " Interactuar";
-                    }
-                    else
-                    {
-                        // Fallback if InputIconMapper not available
-                        if (isUsingGamepad)
-                        {
-                            promptText.text = "[X] Interactuar";
-                        }
-                        else
-                        {
-                            promptText.text = "[E] Interactuar";
-                        }
-                    }
-                }
+            }
+            
+            // Actualizar texto del prompt
+            if (promptText != null)
+            {
+                string iconText = GetButtonIcon();
+                promptText.text = iconText + " Interactuar";
             }
         }
         else
         {
-            // Ocultar prompt
-            if (interactionPrompt != null)
+            // No hay NPC: Ocultar prompt
+            if (interactionPrompt.activeSelf)
             {
                 interactionPrompt.SetActive(false);
             }
         }
     }
     
+    private string GetButtonIcon()
+    {
+        // Use InputIconMapper for dynamic button display
+        if (InputIconMapper.Instance != null)
+        {
+            return InputIconMapper.Instance.GetSpriteOrText(InputAction.Interact);
+        }
+        
+        // Fallback
+        if (isUsingGamepad)
+        {
+            return "[X]";
+        }
+        else
+        {
+            return "[E]";
+        }
+    }
+    
     private void CheckInteraction()
     {
-        // Don't check if on cooldown
+        // Don't check if on cooldown or no NPC nearby
         if (interactionCooldown > 0f || currentNPC == null)
             return;
         
         bool interactPressed = false;
         
         // Método 1: Input System (mando y teclado desde InputActions)
-        // FIXED: Use WasPressedThisFrame() instead of triggered to prevent auto-fire on gamepad
         if (interactAction != null && interactAction.action.WasPressedThisFrame())
         {
             interactPressed = true;
@@ -140,7 +144,13 @@ public class XPlayerInteraction : MonoBehaviour
         if (interactPressed)
         {
             currentNPC.TriggerInteraction();
-            interactionCooldown = INTERACTION_COOLDOWN_TIME; // Start cooldown
+            interactionCooldown = INTERACTION_COOLDOWN_TIME;
+            
+            // Ocultar el prompt mientras se muestra el diálogo
+            if (interactionPrompt != null)
+            {
+                interactionPrompt.SetActive(false);
+            }
         }
     }
     
